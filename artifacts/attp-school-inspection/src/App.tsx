@@ -29,6 +29,20 @@ const categories = ['Hồ sơ pháp lý & hành chính', 'Cơ sở vật chất 
 const categoryIcons = [FileText, Building2, Droplets, Stethoscope, Truck, Boxes, CookingPot, ClipboardList, ClipboardCheck, Sparkles, ShieldAlert];
 const schools = ['Trường Tiểu học Thái Sơn', 'Trường Mầm non Hoa Sen', 'Trường THCS Nguyễn Du', 'Trường Tiểu học Lê Lợi', 'Trường Mầm non Sao Mai'];
 const teams = ['Tổ ATTP số 01', 'Tổ ATTP số 02', 'Đội liên ngành Phường Minh Khai'];
+const schoolAreaOptions: Record<string, string[]> = {
+  [schools[0]]: ['Khu tiếp nhận thực phẩm', 'Khu sơ chế', 'Khu nấu', 'Khu chia suất', 'Kho khô', 'Kho mát', 'Khu lưu mẫu', 'Nhà ăn'],
+  [schools[1]]: ['Khu tiếp nhận thực phẩm', 'Khu sơ chế', 'Khu nấu', 'Khu chia suất', 'Kho thực phẩm', 'Khu lưu mẫu', 'Phòng ăn'],
+  [schools[2]]: ['Khu tiếp nhận thực phẩm', 'Khu sơ chế', 'Khu nấu', 'Khu chia suất', 'Kho khô', 'Kho mát', 'Khu lưu mẫu', 'Nhà ăn bán trú'],
+  [schools[3]]: ['Bếp chính', 'Khu sơ chế', 'Khu nấu', 'Khu chia suất', 'Kho khô', 'Kho mát', 'Khu lưu mẫu', 'Nhà ăn'],
+  [schools[4]]: ['Khu tiếp nhận thực phẩm', 'Khu sơ chế', 'Khu nấu', 'Khu chia suất', 'Kho thực phẩm', 'Khu lưu mẫu', 'Phòng ăn'],
+};
+const schoolIngredientOptions: Record<string, string[]> = {
+  [schools[0]]: ['Thịt gà', 'Gạo', 'Rau ngót', 'Thanh long', 'Đậu xanh'],
+  [schools[1]]: ['Thịt heo', 'Rau xanh', 'Sữa tươi', 'Trứng gà', 'Gạo'],
+  [schools[2]]: ['Thịt băm', 'Bí xanh', 'Chuối', 'Sữa tươi', 'Bánh mì'],
+  [schools[3]]: ['Thịt heo', 'Rau cải', 'Gạo', 'Gia vị khô', 'Trứng gà'],
+  [schools[4]]: ['Thịt heo', 'Cá', 'Rau củ', 'Sữa tươi', 'Gạo'],
+};
 
 const seedCriteria: Criteria[] = [
   { id: 'c1', category: categories[0], code: 'HS-01', title: 'Có Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm còn hiệu lực', legal: 'Luật ATTP 2010; Nghị định 15/2018/NĐ-CP', guidance: 'Đối chiếu bản gốc hoặc bản điện tử với thông tin cơ sở.', evidence: 'Ảnh giấy chứng nhận', required: true, checkType: 'pass-fail', active: true },
@@ -752,6 +766,7 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   const [date, setDate] = useState(record?.date || selected?.date || '2025-09-15');
   const [team, setTeam] = useState(record?.team || selected?.team || teams[0]);
   const [areas, setAreas] = useState(record?.areas || []);
+  const [areaToAdd, setAreaToAdd] = useState('');
   const [findings, setFindings] = useState(record?.findings || '');
   const [evidence, setEvidence] = useState(record?.evidence || '');
   const [conclusion, setConclusion] = useState(record?.conclusion || '');
@@ -759,6 +774,15 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   const [incident, setIncident] = useState(record?.incident || false);
   const [signature, setSignature] = useState(record?.signature?.startsWith('data:') ? record.signature : '');
   const [relatedLinks, setRelatedLinks] = useState<RecordLink[]>(record?.relatedLinks || []);
+  const availableAreas = schoolAreaOptions[selected?.school || ''] || [];
+  const schoolMeals = seedMealLogs.filter(meal => meal.school === selected?.school);
+  const getLinkOptions = (type: RecordLinkType) => {
+    if (type === 'area') return availableAreas;
+    if (type === 'meal') return schoolMeals.map(meal => `${meal.meal} · ${meal.menu} · ${formatDate(meal.date)}`);
+    if (type === 'ingredient') return schoolIngredientOptions[selected?.school || ''] || [];
+    if (type === 'batch') return Array.from(new Set(schoolMeals.map(meal => meal.batch)));
+    return Array.from(new Set(schoolMeals.map(meal => meal.supplier)));
+  };
 
   useEffect(() => {
     const syncSignature = (event: Event) => setSignature((event as CustomEvent<string>).detail || '');
@@ -769,6 +793,12 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   const addRelatedLink = () => setRelatedLinks(current => [...current, { id: uid('link'), type: 'area', value: '' }]);
   const updateRelatedLink = (id: string, patch: Partial<RecordLink>) => setRelatedLinks(current => current.map(link => link.id === id ? { ...link, ...patch } : link));
   const removeRelatedLink = (id: string) => setRelatedLinks(current => current.filter(link => link.id !== id));
+  const addArea = () => {
+    if (!areaToAdd || areas.includes(areaToAdd)) return;
+    setAreas(current => [...current, areaToAdd]);
+    setAreaToAdd('');
+  };
+  const removeArea = (area: string) => setAreas(current => current.filter(item => item !== area));
   const buildRecord = (): InspectionRecord | null => selected ? {
     id: record?.id || uid('r'),
     inspectionId,
@@ -800,17 +830,17 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
       <div className="flex items-start gap-3"><div className="rounded-lg bg-secondary p-2 text-primary"><PenLine size={17}/></div><div><div className="text-sm font-semibold">Biên bản mở, nhập theo thực tế</div><div className="mt-1 text-xs leading-relaxed text-muted-foreground">Không cần điền đủ danh sách tiêu chí. Ghi thẳng nội dung đã kiểm tra và chỉ gắn đối tượng truy xuất khi có liên quan.</div></div></div>
     </div>
     <div className="grid gap-4 sm:grid-cols-3">
-      <label className="text-xs font-semibold sm:col-span-2">Lượt kiểm tra<select className="field mt-1.5" value={inspectionId} onChange={event => { setInspectionId(event.target.value); const inspection = inspections.find(item => item.id === event.target.value); if (inspection) { setDate(inspection.date); setTeam(inspection.team); setAreas([]); } }} data-testid="select-record-inspection">{inspections.map(inspection => <option value={inspection.id} key={inspection.id}>{inspection.school} · {formatDate(inspection.date)}</option>)}</select></label>
+       <label className="text-xs font-semibold sm:col-span-2">Lượt kiểm tra<select className="field mt-1.5" value={inspectionId} onChange={event => { setInspectionId(event.target.value); const inspection = inspections.find(item => item.id === event.target.value); if (inspection) { setDate(inspection.date); setTeam(inspection.team); setAreas([]); setAreaToAdd(''); setRelatedLinks([]); } }} data-testid="select-record-inspection">{inspections.map(inspection => <option value={inspection.id} key={inspection.id}>{inspection.school} · {formatDate(inspection.date)}</option>)}</select></label>
       <label className="text-xs font-semibold">Ngày lập<input className="field mt-1.5" type="date" value={date} onChange={event => setDate(event.target.value)} data-testid="input-record-date"/></label>
       <label className="text-xs font-semibold">Tổ kiểm tra<input className="field mt-1.5" value={team} onChange={event => setTeam(event.target.value)} data-testid="input-record-team"/></label>
-      <label className="text-xs font-semibold sm:col-span-2">Khu vực đã kiểm tra <span className="font-normal text-muted-foreground">(nếu có)</span><input className="field mt-1.5" value={areas.join(', ')} onChange={event => setAreas(event.target.value.split(',').map(value => value.trim()).filter(Boolean))} placeholder="Ví dụ: Khu vực nấu, kho khô" data-testid="input-record-areas"/></label>
+       <div className="text-xs font-semibold sm:col-span-2">Khu vực đã kiểm tra <span className="font-normal text-muted-foreground">(nếu có)</span><div className="mt-1.5 flex gap-2"><select className="field min-w-0 flex-1" value={areaToAdd} onChange={event => setAreaToAdd(event.target.value)} data-testid="select-record-area"><option value="">Chọn khu vực của trường</option>{availableAreas.map(area => <option value={area} key={area}>{area}</option>)}</select><button type="button" className="btn btn-quiet shrink-0 px-3" onClick={addArea} disabled={!areaToAdd} data-testid="button-add-record-area"><Plus size={14}/> Thêm</button></div>{areas.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{areas.map(area => <span className="tag bg-secondary text-foreground" key={area}>{area}<button type="button" className="ml-1 text-muted-foreground hover:text-destructive" onClick={() => removeArea(area)} aria-label={`Xóa khu vực ${area}`}><X size={12}/></button></span>)}</div>}</div>
     </div>
     <div className="my-6 space-y-4 border-t border-border pt-5">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><p className="section-label">Nội dung biên bản</p><h3 className="mt-1 font-semibold">Ghi nhận trực tiếp tại hiện trường</h3><p className="mt-1 text-xs text-muted-foreground">Có thể ghi phần đạt, điểm chưa phù hợp, vị trí và diễn biến; không cần chọn tiêu chí.</p></div><Badge tone="blue"><FileText size={11}/> Nhập tự do</Badge></div>
       <label className="block text-xs font-semibold">Nội dung kiểm tra & ghi nhận<textarea className="field mt-1.5 min-h-40" value={findings} onChange={event => setFindings(event.target.value)} placeholder="Ví dụ: Đã kiểm tra khu vực nấu. Dụng cụ sống/chín được phân biệt; sàn khu vực chế biến còn đọng nước ở góc phía sau..." data-testid="textarea-record-findings"/></label>
       <div className="rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><div className="flex items-center gap-2 text-xs font-semibold"><Link2 size={14} className="text-primary"/> Liên kết để truy xuất ngược <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-normal text-muted-foreground">không bắt buộc</span></div><p className="mt-1 text-[11px] text-muted-foreground">Chỉ thêm khi nội dung liên quan đến món ăn, nguyên liệu, lô hàng hoặc nhà cung cấp.</p></div><button type="button" className="btn btn-quiet shrink-0 px-3 py-2 text-xs" onClick={addRelatedLink} data-testid="button-add-record-link"><Plus size={14}/> Thêm liên kết</button></div>
-        {relatedLinks.length > 0 && <div className="mt-3 space-y-2">{relatedLinks.map(link => <div key={link.id} className="flex flex-col gap-2 sm:flex-row sm:items-center"><select className="field py-2 text-xs sm:w-44" value={link.type} onChange={event => updateRelatedLink(link.id, { type: event.target.value as RecordLinkType })} aria-label="Loại liên kết truy xuất" data-testid={`select-record-link-type-${link.id}`}>{Object.entries(recordLinkTypeLabels).map(([type, label]) => <option value={type} key={type}>{label}</option>)}</select><input className="field min-w-0 flex-1 py-2 text-xs" value={link.value} onChange={event => updateRelatedLink(link.id, { value: event.target.value })} placeholder={`Nhập ${recordLinkTypeLabels[link.type].toLowerCase()}`} data-testid={`input-record-link-value-${link.id}`}/><button type="button" className="btn btn-quiet self-end p-2 text-destructive sm:self-auto" onClick={() => removeRelatedLink(link.id)} aria-label="Xóa liên kết" data-testid={`button-remove-record-link-${link.id}`}><Trash2 size={14}/></button></div>)}</div>}
+         {relatedLinks.length > 0 && <div className="mt-3 space-y-2">{relatedLinks.map(link => { const options = getLinkOptions(link.type); return <div key={link.id} className="flex flex-col gap-2 sm:flex-row sm:items-center"><select className="field py-2 text-xs sm:w-44" value={link.type} onChange={event => updateRelatedLink(link.id, { type: event.target.value as RecordLinkType, value: '' })} aria-label="Loại liên kết truy xuất" data-testid={`select-record-link-type-${link.id}`}>{Object.entries(recordLinkTypeLabels).map(([type, label]) => <option value={type} key={type}>{label}</option>)}</select>{options.length > 0 ? <select className="field min-w-0 flex-1 py-2 text-xs" value={link.value} onChange={event => updateRelatedLink(link.id, { value: event.target.value })} aria-label={`Chọn ${recordLinkTypeLabels[link.type].toLowerCase()}`} data-testid={`select-record-link-value-${link.id}`}><option value="">Chọn {recordLinkTypeLabels[link.type].toLowerCase()} của trường</option>{options.map(option => <option value={option} key={option}>{option}</option>)}</select> : <input className="field min-w-0 flex-1 py-2 text-xs" value={link.value} onChange={event => updateRelatedLink(link.id, { value: event.target.value })} placeholder={`Nhập ${recordLinkTypeLabels[link.type].toLowerCase()}`} data-testid={`input-record-link-value-${link.id}`}/>}<button type="button" className="btn btn-quiet self-end p-2 text-destructive sm:self-auto" onClick={() => removeRelatedLink(link.id)} aria-label="Xóa liên kết" data-testid={`button-remove-record-link-${link.id}`}><Trash2 size={14}/></button></div>; })}</div>}
       </div>
     </div>
     <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
