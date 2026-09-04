@@ -201,6 +201,26 @@
 @media (max-width: 767px) {
   .content-grid { padding: 16px !important; }
   .app-shell main > header { padding: 0 16px !important; }
-  .mobile-scroll { overflow-x: auto; }
-  .mobile-scroll > * { min-width: 680px; }
+  .app-modal-backdrop {
+    align-items: flex-start !important;
+    overflow: hidden;
+    padding-top: 16px !important;
+  }
+  .mobile-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .mobile-scroll > .min-w-\[680px\],
+  .mobile-scroll > .min-w-\[760px\] {
+    min-width: 680px;
+  }
+  .mobile-scroll > .flex {
+    min-width: max-content;
+  }
+  .app-modal-surface {
+    height: calc(100dvh - 16px) !important;
+    max-height: none !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
 }
