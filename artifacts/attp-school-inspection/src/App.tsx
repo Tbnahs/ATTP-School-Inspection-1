@@ -766,7 +766,6 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   const [date, setDate] = useState(record?.date || selected?.date || '2025-09-15');
   const [team, setTeam] = useState(record?.team || selected?.team || teams[0]);
   const [areas, setAreas] = useState(record?.areas || []);
-  const [areaToAdd, setAreaToAdd] = useState('');
   const [findings, setFindings] = useState(record?.findings || '');
   const [evidence, setEvidence] = useState(record?.evidence || '');
   const [conclusion, setConclusion] = useState(record?.conclusion || '');
@@ -793,12 +792,6 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   const addRelatedLink = () => setRelatedLinks(current => [...current, { id: uid('link'), type: 'area', value: '' }]);
   const updateRelatedLink = (id: string, patch: Partial<RecordLink>) => setRelatedLinks(current => current.map(link => link.id === id ? { ...link, ...patch } : link));
   const removeRelatedLink = (id: string) => setRelatedLinks(current => current.filter(link => link.id !== id));
-  const addArea = () => {
-    if (!areaToAdd || areas.includes(areaToAdd)) return;
-    setAreas(current => [...current, areaToAdd]);
-    setAreaToAdd('');
-  };
-  const removeArea = (area: string) => setAreas(current => current.filter(item => item !== area));
   const buildRecord = (): InspectionRecord | null => selected ? {
     id: record?.id || uid('r'),
     inspectionId,
@@ -830,10 +823,10 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
       <div className="flex items-start gap-3"><div className="rounded-lg bg-secondary p-2 text-primary"><PenLine size={17}/></div><div><div className="text-sm font-semibold">Biên bản mở, nhập theo thực tế</div><div className="mt-1 text-xs leading-relaxed text-muted-foreground">Không cần điền đủ danh sách tiêu chí. Ghi thẳng nội dung đã kiểm tra và chỉ gắn đối tượng truy xuất khi có liên quan.</div></div></div>
     </div>
     <div className="grid gap-4 sm:grid-cols-3">
-       <label className="text-xs font-semibold sm:col-span-2">Lượt kiểm tra<select className="field mt-1.5" value={inspectionId} onChange={event => { setInspectionId(event.target.value); const inspection = inspections.find(item => item.id === event.target.value); if (inspection) { setDate(inspection.date); setTeam(inspection.team); setAreas([]); setAreaToAdd(''); setRelatedLinks([]); } }} data-testid="select-record-inspection">{inspections.map(inspection => <option value={inspection.id} key={inspection.id}>{inspection.school} · {formatDate(inspection.date)}</option>)}</select></label>
+       <label className="text-xs font-semibold sm:col-span-2">Lượt kiểm tra<select className="field mt-1.5" value={inspectionId} onChange={event => { setInspectionId(event.target.value); const inspection = inspections.find(item => item.id === event.target.value); if (inspection) { setDate(inspection.date); setTeam(inspection.team); setAreas([]); setRelatedLinks([]); } }} data-testid="select-record-inspection">{inspections.map(inspection => <option value={inspection.id} key={inspection.id}>{inspection.school} · {formatDate(inspection.date)}</option>)}</select></label>
       <label className="text-xs font-semibold">Ngày lập<input className="field mt-1.5" type="date" value={date} onChange={event => setDate(event.target.value)} data-testid="input-record-date"/></label>
       <label className="text-xs font-semibold">Tổ kiểm tra<input className="field mt-1.5" value={team} onChange={event => setTeam(event.target.value)} data-testid="input-record-team"/></label>
-       <div className="text-xs font-semibold sm:col-span-2">Khu vực đã kiểm tra <span className="font-normal text-muted-foreground">(nếu có)</span><div className="mt-1.5 flex gap-2"><select className="field min-w-0 flex-1" value={areaToAdd} onChange={event => setAreaToAdd(event.target.value)} data-testid="select-record-area"><option value="">Chọn khu vực của trường</option>{availableAreas.map(area => <option value={area} key={area}>{area}</option>)}</select><button type="button" className="btn btn-quiet shrink-0 px-3" onClick={addArea} disabled={!areaToAdd} data-testid="button-add-record-area"><Plus size={14}/> Thêm</button></div>{areas.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{areas.map(area => <span className="tag bg-secondary text-foreground" key={area}>{area}<button type="button" className="ml-1 text-muted-foreground hover:text-destructive" onClick={() => removeArea(area)} aria-label={`Xóa khu vực ${area}`}><X size={12}/></button></span>)}</div>}</div>
+       <label className="text-xs font-semibold sm:col-span-2">Khu vực đã kiểm tra <span className="font-normal text-muted-foreground">(nếu có)</span><input className="field mt-1.5" value={areas.join(', ')} onChange={event => setAreas(event.target.value.split(',').map(value => value.trim()).filter(Boolean))} placeholder="Ví dụ: Khu vực nấu, kho khô" data-testid="input-record-areas"/></label>
     </div>
     <div className="my-6 space-y-4 border-t border-border pt-5">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><p className="section-label">Nội dung biên bản</p><h3 className="mt-1 font-semibold">Ghi nhận trực tiếp tại hiện trường</h3><p className="mt-1 text-xs text-muted-foreground">Có thể ghi phần đạt, điểm chưa phù hợp, vị trí và diễn biến; không cần chọn tiêu chí.</p></div><Badge tone="blue"><FileText size={11}/> Nhập tự do</Badge></div>
