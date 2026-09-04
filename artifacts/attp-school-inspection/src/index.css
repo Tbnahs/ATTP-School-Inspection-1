@@ -197,6 +197,9 @@
 .app-shell .content-grid .bg-primary {
   background: #F58220;
 }
+.mobile-scroll.flex {
+  display: none !important;
+}
 
 @media (max-width: 767px) {
   .content-grid { padding: 16px !important; }
