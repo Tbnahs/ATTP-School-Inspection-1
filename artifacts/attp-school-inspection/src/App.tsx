@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { CalendarDays, ClipboardCheck, FileText, LayoutDashboard, ListChecks, ShieldAlert, Plus, Search, Bell, ChevronRight, Clock3, MapPin, Users, CheckCircle2, AlertTriangle, CircleDot, MoreHorizontal, Pencil, Trash2, Eye, ArrowLeft, Save, X, Upload, Camera, Download, Filter, Menu, Building2, Droplets, Stethoscope, Truck, Boxes, CookingPot, ClipboardList, Sparkles, ExternalLink, RefreshCw, PenLine } from 'lucide-react';
+import { CalendarDays, ClipboardCheck, FileText, LayoutDashboard, ShieldAlert, Plus, Search, Bell, ChevronRight, Clock3, MapPin, Users, CheckCircle2, AlertTriangle, CircleDot, MoreHorizontal, Pencil, Trash2, Eye, ArrowLeft, Save, X, Upload, Camera, Download, Filter, Menu, Building2, Droplets, Stethoscope, Truck, Boxes, CookingPot, ClipboardList, Sparkles, ExternalLink, RefreshCw, PenLine, Link2, Tag } from 'lucide-react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -19,7 +19,9 @@ type Inspection = { id: string; type: 'periodic' | 'surprise'; school: string; a
 type Criteria = { id: string; category: string; code: string; title: string; legal: string; guidance: string; evidence: string; document?: string; severity?: Severity; required?: boolean; checkType?: CriterionCheckType; active: boolean };
 type CriterionResult = { status: ResultStatus; notes: string; evidence: string; deadline: string };
 type MealLog = { id: string; school: string; date: string; meal: 'Sáng' | 'Trưa' | 'Xế'; menu: string; supplier: string; batch: string; step1: string; step2: string; step3: string; temperature: string };
-type InspectionRecord = { id: string; inspectionId: string; school: string; date: string; team: string; areas: string[]; results: Record<string, CriterionResult>; linkedMealIds?: string[]; findings: string; evidence: string; conclusion: string; recommendation: string; signature: string; incident: boolean };
+type RecordLinkType = 'area' | 'meal' | 'ingredient' | 'batch' | 'supplier';
+type RecordLink = { id: string; type: RecordLinkType; value: string };
+type InspectionRecord = { id: string; inspectionId: string; school: string; date: string; team: string; areas: string[]; results: Record<string, CriterionResult>; linkedMealIds?: string[]; relatedLinks?: RecordLink[]; findings: string; evidence: string; conclusion: string; recommendation: string; signature: string; incident: boolean };
 type Remediation = { id: string; school: string; finding: string; severity: Severity; owner: string; due: string; status: string; log: string; decision: string };
 type Alert = { id: string; school: string; onset: string; cases: number; symptoms: string; food: string; supplier: string; batch: string; status: 'new' | 'contained' | 'investigating' | 'closed'; notified: string; containment: string; traceability: string };
 
@@ -100,14 +102,14 @@ function uid(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().t
 function save(key: string, value: unknown) { localStorage.setItem(key, JSON.stringify(value)); }
 function formatDate(date: string) { if (!date) return '—'; return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${date}T00:00:00`)); }
 function statusLabel(status: string) { return ({ planned: 'Đã lên lịch', 'in-progress': 'Đang thực hiện', completed: 'Đã hoàn tất', open: 'Mở', progress: 'Đang xử lý', closed: 'Đã đóng', new: 'Mới tiếp nhận', contained: 'Đã khoanh vùng', investigating: 'Đang điều tra' } as Record<string, string>)[status] || status; }
-function severityLabel(s: Severity) { return ({ critical: 'Nghiêm trọng', major: 'Quan trọng', minor: 'Nhẹ' })[s]; }
+function severityLabel(s: Severity | undefined) { return ({ critical: 'Nghiêm trọng', major: 'Quan trọng', minor: 'Nhẹ' })[s || 'minor']; }
 
 function Badge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'teal' | 'amber' | 'red' | 'blue' }) {
   const styles = { neutral: 'bg-muted text-muted-foreground', teal: 'bg-[hsl(174_58%_34%/.12)] text-[hsl(174_58%_28%)]', amber: 'bg-[hsl(36_92%_57%/.18)] text-[hsl(30_75%_31%)]', red: 'bg-[hsl(2_69%_54%/.12)] text-[hsl(2_65%_42%)]', blue: 'bg-[hsl(201_70%_48%/.12)] text-[hsl(201_70%_35%)]' };
   return <span className={`tag ${styles[tone]}`}>{children}</span>;
 }
 function statusTone(status: string): 'neutral' | 'teal' | 'amber' | 'red' | 'blue' { return status === 'completed' || status === 'closed' ? 'teal' : status === 'in-progress' || status === 'progress' || status === 'investigating' ? 'blue' : status === 'open' || status === 'new' ? 'amber' : 'neutral'; }
-function severityTone(severity: Severity): 'teal' | 'amber' | 'red' { return severity === 'critical' ? 'red' : severity === 'major' ? 'amber' : 'teal'; }
+function severityTone(severity: Severity | undefined): 'teal' | 'amber' | 'red' { return severity === 'critical' ? 'red' : severity === 'major' ? 'amber' : 'teal'; }
 
 function Shell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -115,7 +117,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   const nav = [
     { href: '/schedule', label: 'Lịch kiểm tra', icon: CalendarDays },
     { href: '/records', label: 'Biên bản kiểm tra', icon: ClipboardCheck },
-    { href: '/criteria', label: 'Thư viện tiêu chí', icon: ListChecks },
     { href: '/alerts', label: 'Cảnh báo ngộ độc (SOP Alert)', icon: ShieldAlert },
   ];
   const isActive = (href: string) => location === href || (href === '/records' && location === '/records/new');
@@ -213,7 +214,7 @@ function Schedule({ inspections, setInspections, notify }: { inspections: Inspec
   const update = (key: keyof Inspection, value: string) => setForm(current => ({ ...current, [key]: value }));
   const submit = () => {
     if (!form.school || !form.date || !form.time) return;
-    const item: Inspection = { id:uid('i'), type:form.type as 'periodic'|'surprise', school:form.school, address:form.address || 'Chưa cập nhật địa chỉ', date:form.date, time:form.time, team:form.team || teams[0], status:'planned', purpose:form.purpose || '', notes:form.notes || '', criteriaIds: form.criteriaIds?.length ? form.criteriaIds : availableCriteria.filter(criterion => criterion.required).map(criterion => criterion.id) };
+     const item: Inspection = { id:uid('i'), type:form.type as 'periodic'|'surprise', school:form.school, address:form.address || 'Chưa cập nhật địa chỉ', date:form.date, time:form.time, team:form.team || teams[0], status:'planned', purpose:form.purpose || '', notes:form.notes || '' };
     const next = [item, ...inspections];
     setInspections(next);
     save('attp-inspections', next);
@@ -532,7 +533,15 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
   const [toDate, setToDate] = useState('');
   const filtered = records.filter(record => {
     const query = search.toLowerCase();
-    const matchesSearch = record.school.toLowerCase().includes(query) || record.team.toLowerCase().includes(query);
+    const searchableText = [
+      record.school,
+      record.team,
+      record.findings,
+      record.recommendation,
+      ...record.areas,
+      ...(record.relatedLinks || []).map(link => link.value),
+    ].join(' ').toLowerCase();
+    const matchesSearch = searchableText.includes(query);
     const matchesTime = (!fromDate || record.date >= fromDate) && (!toDate || record.date <= toDate);
     const matchesType = filter === 'all' || (filter === 'incident' ? record.incident : Object.values(record.results).some(result => result.status === 'fail'));
     return matchesSearch && matchesTime && matchesType;
@@ -550,7 +559,7 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
   };
   const clearTimeFilter = () => { setFromDate(''); setToDate(''); };
   return <div className="mx-auto max-w-[1440px] animate-rise">
-    <PageTitle eyebrow="Nghiệp vụ · Hồ sơ điện tử" title="Biên bản kiểm tra" description="Ghi nhận đầy đủ kết quả tại hiện trường, bằng chứng và kết luận xử lý." action={<button className="btn btn-primary" onClick={openNew} data-testid="button-create-record"><Plus size={16}/> Tạo biên bản</button>} />
+      <PageTitle eyebrow="Nghiệp vụ · Hồ sơ điện tử" title="Biên bản kiểm tra" description="Nhập thẳng nội dung tại hiện trường; chỉ gắn món ăn, lô hàng hoặc nhà cung cấp khi thực sự liên quan." action={<button className="btn btn-primary" onClick={openNew} data-testid="button-create-record"><Plus size={16}/> Tạo biên bản</button>} />
     <Panel>
       <div className="border-b border-border px-5 py-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -582,9 +591,9 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
           {filtered.map(record => {
             const failedCount = Object.values(record.results).filter(result => result.status === 'fail').length;
             return <div key={record.id} className="grid grid-cols-[1.35fr_1fr_.85fr_1fr_64px] items-center gap-4 border-b border-border px-5 py-4 transition-colors hover:bg-muted/35">
-              <div><div className="text-sm font-semibold">{record.school}</div><div className="mt-1 text-[10px] text-muted-foreground">Mã {record.id.toUpperCase()}</div></div>
+               <div><div className="text-sm font-semibold">{record.school}</div><div className="mt-1 text-[10px] text-muted-foreground">Mã {record.id.toUpperCase()} · {record.findings ? 'Có nội dung ghi nhận' : 'Chưa có nội dung'}</div></div>
               <div><div className="text-xs font-medium">{formatDate(record.date)}</div><div className="mt-1 text-xs text-muted-foreground">{record.team}</div></div>
-              <div className="text-xs text-muted-foreground">{record.areas.length} khu vực</div>
+               <div className="text-xs text-muted-foreground">{record.areas.length ? `${record.areas.length} khu vực` : 'Chưa gắn khu vực'}</div>
               <div>{failedCount > 0 ? <Badge tone="red"><AlertTriangle size={11}/> {failedCount} kiến nghị</Badge> : <Badge tone="teal"><CheckCircle2 size={11}/> Đạt</Badge>}</div>
               <div className="flex items-center gap-1"><button className="btn btn-quiet h-9 w-9 p-0" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setDetail(record)} data-testid={`button-view-record-${record.id}`}><Eye size={15}/></button><button className="btn btn-quiet h-9 w-9 p-0" title="Sửa biên bản" aria-label="Sửa biên bản" onClick={() => { setEditing(record); setShowEditor(true); }} data-testid={`button-edit-record-${record.id}`}><Pencil size={15}/></button></div>
             </div>;
@@ -593,7 +602,7 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
         </div>
       </div>
     </Panel>
-    {showEditor && <RecordEditor record={editing} initialInspectionId={requestedInspectionId} inspections={inspections} onClose={() => { setShowEditor(false); if (location.startsWith('/records/new')) setLocation('/records'); }} onSave={saveRecord} onAlert={onAlert}/>}
+     {showEditor && <RecordEditorSimple record={editing} initialInspectionId={requestedInspectionId} inspections={inspections} onClose={() => { setShowEditor(false); if (location.startsWith('/records/new')) setLocation('/records'); }} onSave={saveRecord} onAlert={onAlert}/>}
     {detail && <InspectionRecordDetailModal record={detail} onClose={() => setDetail(null)} />}
   </div>;
 }
@@ -601,6 +610,14 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
 function criterionResultLabel(status: ResultStatus) {
   return status === 'pass' ? 'Đạt' : status === 'fail' ? 'Không đạt' : 'K/Áp dụng';
 }
+
+const recordLinkTypeLabels: Record<RecordLinkType, string> = {
+  area: 'Khu vực',
+  meal: 'Món ăn / bữa ăn',
+  ingredient: 'Nguyên liệu',
+  batch: 'Lô thực phẩm',
+  supplier: 'Nhà cung cấp',
+};
 
 function InspectionRecordDetailModal({ record, onClose }: { record: InspectionRecord; onClose: () => void }) {
   const failedCount = Object.values(record.results).filter(result => result.status === 'fail').length;
@@ -623,8 +640,12 @@ function InspectionRecordDetailModal({ record, onClose }: { record: InspectionRe
             <div className="mt-3 grid gap-3 sm:grid-cols-3"><Detail label="Ghi chú tại hiện trường" value={result.notes || 'Không ghi nhận'} /><Detail label="Bằng chứng" value={result.evidence || 'Chưa có'} /><Detail label="Hạn khắc phục" value={result.deadline ? formatDate(result.deadline) : 'Không có'} /></div>
           </div>;
         })}</div> : <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">Biên bản này chưa có kết quả chi tiết theo từng tiêu chí.</div>}
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+       </div>
+       {record.relatedLinks && record.relatedLinks.length > 0 && <div className="rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4">
+         <div className="flex items-center gap-2 text-xs font-semibold"><Tag size={14} className="text-primary"/> Liên kết truy xuất</div>
+         <div className="mt-3 flex flex-wrap gap-2">{record.relatedLinks.map(link => <span key={link.id} className="tag bg-card text-foreground"><span className="text-primary">{recordLinkTypeLabels[link.type]}</span> · {link.value}</span>)}</div>
+       </div>}
+       <div className="grid gap-4 sm:grid-cols-2">
         <div><div className="mb-1 text-xs font-semibold">Phát hiện & bằng chứng tổng hợp</div><div className="rounded-lg bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">{record.findings || 'Không ghi nhận'}</div></div>
         <div><div className="mb-1 text-xs font-semibold">Kiến nghị khắc phục</div><div className="rounded-lg bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">{record.recommendation || 'Không có'}</div></div>
       </div>
@@ -680,6 +701,7 @@ function RecordEditor({ record, initialInspectionId, inspections, onClose, onSav
   const [incident, setIncident] = useState(record?.incident || false);
   const [signature, setSignature] = useState(record?.signature?.startsWith('data:') ? record.signature : '');
   const [results, setResults] = useState<Record<string, CriterionResult>>(record?.results || {});
+  const [relatedLinks, setRelatedLinks] = useState<RecordLink[]>(record?.relatedLinks || []);
   useEffect(() => {
     const syncSignature = (event: Event) => setSignature((event as CustomEvent<string>).detail || '');
     window.addEventListener('record-signature-change', syncSignature);
@@ -696,7 +718,10 @@ function RecordEditor({ record, initialInspectionId, inspections, onClose, onSav
     const next = [...criteria, item];
     setCriteria(next); save('attp-criteria', next); setShowCriterionForm(false); setNewCriterion({ ...blankCriterion });
   };
-  const buildRecord = (): InspectionRecord | null => selected ? { id: record?.id || uid('r'), inspectionId, school: selected.school, date, team, areas, results, findings, evidence, conclusion, recommendation, signature, incident } : null;
+  const addRelatedLink = () => setRelatedLinks(current => [...current, { id: uid('link'), type: 'area', value: '' }]);
+  const updateRelatedLink = (id: string, patch: Partial<RecordLink>) => setRelatedLinks(current => current.map(link => link.id === id ? { ...link, ...patch } : link));
+  const removeRelatedLink = (id: string) => setRelatedLinks(current => current.filter(link => link.id !== id));
+  const buildRecord = (): InspectionRecord | null => selected ? { id: record?.id || uid('r'), inspectionId, school: selected.school, date, team, areas, results, relatedLinks: relatedLinks.filter(link => link.value.trim()), findings, evidence, conclusion, recommendation, signature, incident } : null;
   const finish = () => {
     if (!signature) { window.alert('Vui lòng ký tay trước khi hoàn tất biên bản.'); return; }
     const next = buildRecord();
@@ -719,6 +744,86 @@ function RecordEditor({ record, initialInspectionId, inspections, onClose, onSav
   </Modal>;
 }
 
+function RecordEditorSimple({ record, initialInspectionId, inspections, onClose, onSave, onAlert }: { record: InspectionRecord | null; initialInspectionId?: string; inspections: Inspection[]; onClose: ()=>void; onSave: (r:InspectionRecord)=>void; onAlert: (r:InspectionRecord)=>void }) {
+  const pendingInspectionId = load<string>('attp-pending-inspection-id', '');
+  const initialInspection = inspections.find(inspection => inspection.id === record?.inspectionId) || inspections.find(inspection => inspection.id === initialInspectionId) || inspections.find(inspection => inspection.id === pendingInspectionId) || inspections.find(inspection => inspection.status === 'in-progress') || inspections[0];
+  const [inspectionId, setInspectionId] = useState(record?.inspectionId || initialInspection?.id || '');
+  const selected = inspections.find(inspection => inspection.id === inspectionId) || initialInspection;
+  const [date, setDate] = useState(record?.date || selected?.date || '2025-09-15');
+  const [team, setTeam] = useState(record?.team || selected?.team || teams[0]);
+  const [areas, setAreas] = useState(record?.areas || []);
+  const [findings, setFindings] = useState(record?.findings || '');
+  const [evidence, setEvidence] = useState(record?.evidence || '');
+  const [conclusion, setConclusion] = useState(record?.conclusion || '');
+  const [recommendation, setRecommendation] = useState(record?.recommendation || '');
+  const [incident, setIncident] = useState(record?.incident || false);
+  const [signature, setSignature] = useState(record?.signature?.startsWith('data:') ? record.signature : '');
+  const [relatedLinks, setRelatedLinks] = useState<RecordLink[]>(record?.relatedLinks || []);
+
+  useEffect(() => {
+    const syncSignature = (event: Event) => setSignature((event as CustomEvent<string>).detail || '');
+    window.addEventListener('record-signature-change', syncSignature);
+    return () => window.removeEventListener('record-signature-change', syncSignature);
+  }, []);
+
+  const addRelatedLink = () => setRelatedLinks(current => [...current, { id: uid('link'), type: 'area', value: '' }]);
+  const updateRelatedLink = (id: string, patch: Partial<RecordLink>) => setRelatedLinks(current => current.map(link => link.id === id ? { ...link, ...patch } : link));
+  const removeRelatedLink = (id: string) => setRelatedLinks(current => current.filter(link => link.id !== id));
+  const buildRecord = (): InspectionRecord | null => selected ? {
+    id: record?.id || uid('r'),
+    inspectionId,
+    school: selected.school,
+    date,
+    team,
+    areas,
+    results: record?.results || {},
+    relatedLinks: relatedLinks.filter(link => link.value.trim()),
+    findings,
+    evidence,
+    conclusion,
+    recommendation,
+    signature,
+    incident,
+  } : null;
+  const finish = () => {
+    if (!signature) { window.alert('Vui lòng ký tay trước khi hoàn tất biên bản.'); return; }
+    const next = buildRecord();
+    if (next) { localStorage.removeItem('attp-pending-inspection-id'); onSave(next); }
+  };
+  const triggerAlert = incident ? () => {
+    const next = buildRecord();
+    if (next) { localStorage.removeItem('attp-pending-inspection-id'); onSave(next); onAlert(next); }
+  } : undefined;
+
+  return <Modal title={record ? 'Chỉnh sửa biên bản kiểm tra' : 'Tạo biên bản kiểm tra'} onClose={onClose} wide>
+    <div className="mb-5 rounded-xl border border-primary/20 bg-[hsl(174_58%_34%/.05)] p-4">
+      <div className="flex items-start gap-3"><div className="rounded-lg bg-secondary p-2 text-primary"><PenLine size={17}/></div><div><div className="text-sm font-semibold">Biên bản mở, nhập theo thực tế</div><div className="mt-1 text-xs leading-relaxed text-muted-foreground">Không cần điền đủ danh sách tiêu chí. Ghi thẳng nội dung đã kiểm tra và chỉ gắn đối tượng truy xuất khi có liên quan.</div></div></div>
+    </div>
+    <div className="grid gap-4 sm:grid-cols-3">
+      <label className="text-xs font-semibold sm:col-span-2">Lượt kiểm tra<select className="field mt-1.5" value={inspectionId} onChange={event => { setInspectionId(event.target.value); const inspection = inspections.find(item => item.id === event.target.value); if (inspection) { setDate(inspection.date); setTeam(inspection.team); setAreas([]); } }} data-testid="select-record-inspection">{inspections.map(inspection => <option value={inspection.id} key={inspection.id}>{inspection.school} · {formatDate(inspection.date)}</option>)}</select></label>
+      <label className="text-xs font-semibold">Ngày lập<input className="field mt-1.5" type="date" value={date} onChange={event => setDate(event.target.value)} data-testid="input-record-date"/></label>
+      <label className="text-xs font-semibold">Tổ kiểm tra<input className="field mt-1.5" value={team} onChange={event => setTeam(event.target.value)} data-testid="input-record-team"/></label>
+      <label className="text-xs font-semibold sm:col-span-2">Khu vực đã kiểm tra <span className="font-normal text-muted-foreground">(nếu có)</span><input className="field mt-1.5" value={areas.join(', ')} onChange={event => setAreas(event.target.value.split(',').map(value => value.trim()).filter(Boolean))} placeholder="Ví dụ: Khu vực nấu, kho khô" data-testid="input-record-areas"/></label>
+    </div>
+    <div className="my-6 space-y-4 border-t border-border pt-5">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><p className="section-label">Nội dung biên bản</p><h3 className="mt-1 font-semibold">Ghi nhận trực tiếp tại hiện trường</h3><p className="mt-1 text-xs text-muted-foreground">Có thể ghi phần đạt, điểm chưa phù hợp, vị trí và diễn biến; không cần chọn tiêu chí.</p></div><Badge tone="blue"><FileText size={11}/> Nhập tự do</Badge></div>
+      <label className="block text-xs font-semibold">Nội dung kiểm tra & ghi nhận<textarea className="field mt-1.5 min-h-40" value={findings} onChange={event => setFindings(event.target.value)} placeholder="Ví dụ: Đã kiểm tra khu vực nấu. Dụng cụ sống/chín được phân biệt; sàn khu vực chế biến còn đọng nước ở góc phía sau..." data-testid="textarea-record-findings"/></label>
+      <div className="rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><div className="flex items-center gap-2 text-xs font-semibold"><Link2 size={14} className="text-primary"/> Liên kết để truy xuất ngược <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-normal text-muted-foreground">không bắt buộc</span></div><p className="mt-1 text-[11px] text-muted-foreground">Chỉ thêm khi nội dung liên quan đến món ăn, nguyên liệu, lô hàng hoặc nhà cung cấp.</p></div><button type="button" className="btn btn-quiet shrink-0 px-3 py-2 text-xs" onClick={addRelatedLink} data-testid="button-add-record-link"><Plus size={14}/> Thêm liên kết</button></div>
+        {relatedLinks.length > 0 && <div className="mt-3 space-y-2">{relatedLinks.map(link => <div key={link.id} className="flex flex-col gap-2 sm:flex-row sm:items-center"><select className="field py-2 text-xs sm:w-44" value={link.type} onChange={event => updateRelatedLink(link.id, { type: event.target.value as RecordLinkType })} aria-label="Loại liên kết truy xuất" data-testid={`select-record-link-type-${link.id}`}>{Object.entries(recordLinkTypeLabels).map(([type, label]) => <option value={type} key={type}>{label}</option>)}</select><input className="field min-w-0 flex-1 py-2 text-xs" value={link.value} onChange={event => updateRelatedLink(link.id, { value: event.target.value })} placeholder={`Nhập ${recordLinkTypeLabels[link.type].toLowerCase()}`} data-testid={`input-record-link-value-${link.id}`}/><button type="button" className="btn btn-quiet self-end p-2 text-destructive sm:self-auto" onClick={() => removeRelatedLink(link.id)} aria-label="Xóa liên kết" data-testid={`button-remove-record-link-${link.id}`}><Trash2 size={14}/></button></div>)}</div>}
+      </div>
+    </div>
+    <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
+      <label className="text-xs font-semibold sm:col-span-2">Ảnh / tệp minh chứng<input className="field mt-1.5" value={evidence} onChange={event => setEvidence(event.target.value)} placeholder="Chụp ảnh hoặc ghi tên tệp minh chứng" data-testid="input-record-evidence"/></label>
+      <label className="text-xs font-semibold">Kết luận<select className="field mt-1.5" value={conclusion} onChange={event => setConclusion(event.target.value)} data-testid="select-record-conclusion"><option value="">Chọn kết luận</option><option>Đạt</option><option>Đạt có điều kiện</option><option>Không đạt</option></select></label>
+      <label className="text-xs font-semibold">Hạn khắc phục <span className="font-normal text-muted-foreground">(nếu có)</span><input className="field mt-1.5" type="date" data-testid="input-record-remediation-date"/></label>
+      <label className="text-xs font-semibold sm:col-span-2">Kiến nghị khắc phục<textarea className="field mt-1.5 min-h-20" value={recommendation} onChange={event => setRecommendation(event.target.value)} placeholder="Chỉ nhập nếu có việc cần nhà trường khắc phục..." data-testid="textarea-record-recommendation"/></label>
+      <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold sm:col-span-2"><input type="checkbox" checked={incident} onChange={event => setIncident(event.target.checked)} data-testid="checkbox-record-incident"/> Có dấu hiệu sự cố thực phẩm cần chuyển sang SOP Alert</label>
+    </div>
+    <ModalActions onClose={onClose} onSubmit={finish} onAlert={triggerAlert} label="Lưu & ký biên bản"/>
+  </Modal>;
+}
+
 function CriteriaLibrary({ notify }: { notify: (s:string)=>void }) {
   const [criteria,setCriteria]=useState(()=>load<Criteria[]>('attp-criteria',seedCriteria)); const [show,setShow]=useState(false); const [search,setSearch]=useState(''); const [selectedCat,setSelectedCat]=useState('Tất cả');
   const filtered=criteria.filter(c=>(selectedCat==='Tất cả'||c.category===selectedCat)&&(c.title.toLowerCase().includes(search.toLowerCase())||c.code.toLowerCase().includes(search.toLowerCase())));
@@ -727,7 +832,7 @@ function CriteriaLibrary({ notify }: { notify: (s:string)=>void }) {
   const add=()=>{if(!form.title||!form.code)return;const item={...form,id:uid('c'),category:form.category||categories[0],code:form.code,title:form.title,legal:form.legal||'',guidance:form.guidance||'',evidence:form.evidence||'',severity:form.severity as Severity||'major',active:true};const next=[...criteria,item];setCriteria(next);save('attp-criteria',next);setShow(false);notify('Đã thêm tiêu chí vào thư viện');setForm({category:categories[0],code:'',title:'',legal:'',guidance:'',evidence:'',severity:'major',active:true});};
   return <div className="mx-auto max-w-[1440px] animate-rise"><PageTitle eyebrow="Nghiệp vụ · Chuẩn kiểm tra" title="Thư viện tiêu chí ATTP" description="Bộ tiêu chí dùng chung cho mọi biên bản, bám sát hồ sơ và quy trình bếp ăn trường học." action={<button className="btn btn-primary" onClick={()=>setShow(true)} data-testid="button-add-criterion"><Plus size={16}/> Thêm tiêu chí</button>} /><div className="mb-5 grid gap-3 sm:grid-cols-3"><Panel className="p-4"><div className="text-2xl font-bold">{criteria.length}</div><div className="mt-1 text-xs text-muted-foreground">Tổng số tiêu chí đang dùng</div></Panel><Panel className="p-4"><div className="text-2xl font-bold">{categories.length}</div><div className="mt-1 text-xs text-muted-foreground">Nhóm nghiệp vụ</div></Panel><Panel className="p-4"><div className="text-2xl font-bold">{criteria.filter(c=>c.severity==='critical').length}</div><div className="mt-1 text-xs text-muted-foreground">Tiêu chí trọng yếu</div></Panel></div><Panel><div className="flex flex-col gap-3 border-b border-border px-5 py-4"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><p className="section-label">Danh mục tiêu chuẩn</p><h2 className="mt-1 font-semibold">Checklist pháp lý & hiện trường</h2></div><div className="relative"><Search size={15} className="absolute left-3 top-2.5 text-muted-foreground"/><input className="field py-2 pl-9 text-xs sm:w-64" placeholder="Tìm mã hoặc nội dung" value={search} onChange={e=>setSearch(e.target.value)} data-testid="input-search-criteria"/></div></div><div className="mobile-scroll flex gap-2 pb-1">{['Tất cả',...categories].map(cat=><button key={cat} className={`btn whitespace-nowrap px-3 py-1.5 text-xs ${selectedCat===cat?'btn-primary':'btn-quiet'}`} onClick={()=>setSelectedCat(cat)} data-testid={`button-category-${cat}`}>{cat}</button>)}</div></div><div className="divide-y divide-border">{filtered.map(c=><div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-start" key={c.id} data-testid={`row-criterion-${c.id}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary font-[var(--app-font-mono)] text-[10px] font-bold text-primary">{c.code.split('-')[0]}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="font-[var(--app-font-mono)] text-xs font-bold text-primary">{c.code}</span><span className="text-sm font-semibold">{c.title}</span><Badge tone={severityTone(c.severity)}>{severityLabel(c.severity)}</Badge></div><div className="mt-1.5 text-xs text-muted-foreground">{c.category} <span className="mx-2 text-border">·</span> {c.legal}</div><div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground"><span><strong className="text-foreground">Hướng dẫn:</strong> {c.guidance}</span><span><strong className="text-foreground">Minh chứng:</strong> {c.evidence}</span></div></div><Badge tone="teal"><CheckCircle2 size={11}/> Đang áp dụng</Badge></div>)}{filtered.length===0&&<EmptyState title="Không có tiêu chí phù hợp" description="Bạn có thể thêm tiêu chí mới vào thư viện."/>}</div></Panel>{show&&<Modal title="Thêm tiêu chí mới" onClose={()=>setShow(false)}><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-semibold sm:col-span-2">Nhóm nghiệp vụ<select className="field mt-1.5" value={form.category} onChange={e=>update('category',e.target.value)} data-testid="select-criterion-category">{categories.map(c=><option key={c}>{c}</option>)}</select></label><label className="text-xs font-semibold">Mã tiêu chí<input className="field mt-1.5" value={form.code} onChange={e=>update('code',e.target.value)} placeholder="VD: AT-14" data-testid="input-criterion-code"/></label><label className="text-xs font-semibold">Mức độ<select className="field mt-1.5" value={form.severity} onChange={e=>update('severity',e.target.value)} data-testid="select-criterion-severity"><option value="critical">Nghiêm trọng</option><option value="major">Quan trọng</option><option value="minor">Nhẹ</option></select></label><label className="text-xs font-semibold sm:col-span-2">Tên tiêu chí<input className="field mt-1.5" value={form.title} onChange={e=>update('title',e.target.value)} placeholder="Nội dung cần kiểm tra" data-testid="input-criterion-title"/></label><label className="text-xs font-semibold">Căn cứ pháp lý<input className="field mt-1.5" value={form.legal} onChange={e=>update('legal',e.target.value)} data-testid="input-criterion-legal"/></label><label className="text-xs font-semibold">Minh chứng yêu cầu<input className="field mt-1.5" value={form.evidence} onChange={e=>update('evidence',e.target.value)} data-testid="input-criterion-evidence"/></label><label className="text-xs font-semibold sm:col-span-2">Hướng dẫn kiểm tra<textarea className="field mt-1.5 min-h-20" value={form.guidance} onChange={e=>update('guidance',e.target.value)} data-testid="textarea-criterion-guidance"/></label></div><ModalActions onClose={()=>setShow(false)} onSubmit={add} label="Thêm vào thư viện"/></Modal>}</div>;
 }
-function CriteriaManagementLegacy({ notify }: { notify: (s: string) => void }) {
+function CriteriaManagementUnused({ notify }: { notify: (s: string) => void }) {
   const [criteria, setCriteria] = useState(() => load<Criteria[]>('attp-criteria', seedCriteria));
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
