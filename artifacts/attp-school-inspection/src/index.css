@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -34,59 +34,59 @@
 }
 
 :root {
-  --background: 198 28% 96%;
-  --foreground: 202 38% 17%;
-  --border: 196 20% 87%;
-  --input: 196 20% 82%;
-  --ring: 173 58% 38%;
+  --background: 210 17% 97%;
+  --foreground: 215 28% 17%;
+  --border: 210 17% 91%;
+  --input: 214 32% 91%;
+  --ring: 25 95% 53%;
   --card: 0 0% 100%;
-  --card-foreground: 202 38% 17%;
-  --card-border: 196 20% 89%;
-  --primary: 174 58% 34%;
+  --card-foreground: 215 28% 17%;
+  --card-border: 210 17% 91%;
+  --primary: 25 95% 53%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 193 45% 92%;
-  --secondary-foreground: 202 38% 21%;
-  --muted: 196 24% 93%;
-  --muted-foreground: 201 15% 46%;
-  --accent: 36 92% 57%;
-  --accent-foreground: 202 38% 17%;
+  --secondary: 25 100% 96%;
+  --secondary-foreground: 215 28% 17%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 25 95% 55%;
+  --accent-foreground: 215 28% 17%;
   --destructive: 2 69% 54%;
   --destructive-foreground: 0 0% 100%;
-  --sidebar: 202 38% 15%;
-  --sidebar-foreground: 190 24% 87%;
-  --sidebar-border: 202 30% 24%;
-  --sidebar-primary: 174 58% 43%;
+  --sidebar: 25 95% 53%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-border: 25 90% 48%;
+  --sidebar-primary: 25 95% 53%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 202 32% 22%;
-  --sidebar-accent-foreground: 190 24% 95%;
-  --app-font-sans: 'DM Sans', sans-serif;
+  --sidebar-accent: 25 90% 48%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --app-font-sans: 'Roboto', sans-serif;
   --app-font-serif: Georgia, serif;
-  --app-font-mono: 'Space Grotesk', monospace;
+  --app-font-mono: 'Roboto', sans-serif;
   --radius: 0.75rem;
 }
 
 .dark {
-  --background: 202 38% 10%;
-  --foreground: 190 24% 92%;
-  --border: 202 28% 23%;
-  --input: 202 28% 25%;
-  --card: 202 34% 14%;
-  --card-foreground: 190 24% 92%;
-  --card-border: 202 28% 24%;
-  --muted: 202 28% 21%;
-  --muted-foreground: 190 14% 64%;
-  --secondary: 202 28% 22%;
-  --secondary-foreground: 190 24% 92%;
-  --primary: 174 58% 43%;
-  --accent: 36 92% 57%;
+  --background: 215 28% 10%;
+  --foreground: 210 20% 92%;
+  --border: 215 22% 23%;
+  --input: 215 22% 25%;
+  --card: 215 28% 14%;
+  --card-foreground: 210 20% 92%;
+  --card-border: 215 22% 24%;
+  --muted: 215 22% 21%;
+  --muted-foreground: 210 14% 64%;
+  --secondary: 215 22% 22%;
+  --secondary-foreground: 210 20% 92%;
+  --primary: 25 95% 53%;
+  --accent: 25 95% 55%;
   --destructive: 2 69% 58%;
-  --sidebar: 202 44% 9%;
-  --sidebar-accent: 202 30% 17%;
+  --sidebar: 25 95% 53%;
+  --sidebar-accent: 25 90% 48%;
 }
 
 @layer base {
   * { @apply border-border; }
-  body { @apply font-sans antialiased bg-background text-foreground; margin: 0; }
+  body { @apply font-sans antialiased bg-background text-foreground; margin: 0; font-family: 'Roboto', sans-serif; }
   button, input, textarea, select { font: inherit; }
 }
 
@@ -97,24 +97,110 @@
 .delay-2 { animation-delay: .12s; }
 .delay-3 { animation-delay: .18s; }
 .skeleton { background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--card)) 50%, hsl(var(--muted)) 75%); background-size: 200% 100%; animation: pulse-soft 1.3s ease-in-out infinite; }
-.app-shell { min-height: 100dvh; background: hsl(var(--background)); }
-.content-grid { background-image: linear-gradient(hsl(var(--border) / .28) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / .28) 1px, transparent 1px); background-size: 32px 32px; }
+.app-shell { min-height: 100dvh; background: #F8F9FA; }
+.content-grid { background: #F8F9FA; padding: 24px !important; }
+.content-grid > * { width: 100%; max-width: 1392px !important; }
 .sidebar-nav { transition: background-color .2s ease, color .2s ease, transform .2s ease; }
 .sidebar-nav:hover { transform: translateX(2px); }
-.panel-shadow { box-shadow: 0 8px 30px hsl(202 38% 17% / .06); }
-.field { width: 100%; border: 1px solid hsl(var(--input)); background: hsl(var(--card)); color: hsl(var(--foreground)); border-radius: .6rem; padding: .62rem .75rem; outline: none; transition: border-color .18s, box-shadow .18s; }
+.panel-shadow { box-shadow: 0 1px 2px rgba(0, 0, 0, .05); border-color: #E9ECEF !important; border-radius: 12px !important; }
+.field { width: 100%; border: 1px solid #E2E8F0; background: hsl(var(--card)); color: hsl(var(--foreground)); border-radius: 8px; padding: 10px 16px; outline: none; transition: border-color .18s, box-shadow .18s; }
 .field:focus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / .12); }
 .field::placeholder { color: hsl(var(--muted-foreground) / .75); }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; border-radius: .6rem; padding: .62rem .86rem; font-weight: 600; font-size: .82rem; transition: transform .18s, background-color .18s, border-color .18s; cursor: pointer; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; padding: 10px 16px; font-weight: 600; font-size: 14px; transition: transform .18s, background-color .18s, border-color .18s; cursor: pointer; }
 .btn:hover { transform: translateY(-1px); }
-.btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.btn-primary { background: #F58220; color: #FFFFFF; }
 .btn-primary:hover { background: hsl(var(--primary) / .9); }
 .btn-quiet { border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); background: hsl(var(--card)); }
 .btn-quiet:hover { background: hsl(var(--muted)); }
 .btn-danger { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); }
 .tag { display: inline-flex; align-items: center; gap: .3rem; padding: .22rem .5rem; border-radius: 999px; font-size: .7rem; font-weight: 700; white-space: nowrap; }
 .section-label { color: hsl(var(--muted-foreground)); font-size: .65rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+
+/* Figma reference layout: keep the existing markup and behavior, but align
+   the shared shell and surfaces to the supplied 280px / 80px specification. */
+.app-shell > aside {
+  width: 280px !important;
+  background: #F97316 !important;
+  color: #FFFFFF !important;
+}
+.app-shell > aside > div:first-child {
+  height: 73px !important;
+  background: #FFFFFF !important;
+  border-bottom: 0 !important;
+  padding: 0 16px !important;
+}
+.app-shell > aside > div:first-child > div:first-child {
+  background: #F97316 !important;
+}
+.app-shell > aside > div:first-child > div:last-child > div:first-child {
+  color: #1E293B !important;
+}
+.app-shell > aside > div:first-child > div:last-child > div:last-child {
+  color: #64748B !important;
+}
+.app-shell > aside > div:not(:first-child):not(:last-child) {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+.app-shell .sidebar-nav {
+  width: 260px;
+  min-height: 48px;
+  margin-bottom: 0;
+  border-radius: 0;
+  padding: 12px;
+  color: rgba(255, 255, 255, .92);
+}
+.app-shell .sidebar-nav[data-active="true"] {
+  background: rgba(255, 255, 255, .25) !important;
+  border-left: 4px solid #FFFFFF;
+  padding-left: 8px;
+  box-shadow: none !important;
+  color: #FFFFFF !important;
+}
+.app-shell > aside > div:last-child {
+  border-top-color: rgba(255, 255, 255, .28) !important;
+}
+.app-shell > aside > div:last-child > div {
+  background: rgba(255, 255, 255, .16) !important;
+}
+.app-shell main > header {
+  height: 80px !important;
+  padding: 0 32px !important;
+  background: rgba(255, 255, 255, .96) !important;
+  border-bottom-color: #E9ECEF !important;
+}
+.app-shell main > header .text-xs.font-semibold {
+  color: #1E293B;
+}
+.app-shell .content-grid h1,
+.app-shell .content-grid h2,
+.app-shell .content-grid h3 {
+  color: #1E293B;
+}
+.app-shell .content-grid > div > .panel-shadow,
+.app-shell .content-grid .panel-shadow {
+  background: #FFFFFF;
+}
+.app-shell .content-grid .border-border {
+  border-color: #E9ECEF;
+}
+.app-shell .content-grid .bg-muted\/45 {
+  background: #F8FAFC;
+}
+.app-shell .content-grid .bg-muted\/35:hover,
+.app-shell .content-grid .hover\:bg-muted\/35:hover {
+  background: #FFF7ED;
+}
+.app-shell .content-grid .text-primary {
+  color: #F58220;
+}
+.app-shell .content-grid .bg-primary {
+  background: #F58220;
+}
+
 @media (max-width: 767px) {
+  .content-grid { padding: 16px !important; }
+  .app-shell main > header { padding: 0 16px !important; }
   .mobile-scroll { overflow-x: auto; }
   .mobile-scroll > * { min-width: 680px; }
 }
