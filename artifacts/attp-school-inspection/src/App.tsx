@@ -18,12 +18,13 @@ type CriterionCheckType = 'pass-fail' | 'numeric' | 'text' | 'document' | 'linke
 type Inspection = { id: string; type: 'periodic' | 'surprise'; school: string; address: string; date: string; time: string; team: string; status: string; purpose: string; notes: string; criteriaIds?: string[] };
 type Criteria = { id: string; category: string; code: string; title: string; legal: string; guidance: string; evidence: string; document?: string; severity?: Severity; required?: boolean; checkType?: CriterionCheckType; active: boolean };
 type CriterionResult = { status: ResultStatus; notes: string; evidence: string; deadline: string };
+type FieldInspectionItem = { id: string; title: string; detail: string; note: string; evidence: string; status: ResultStatus };
 type MealLog = { id: string; school: string; date: string; meal: 'Sáng' | 'Trưa' | 'Xế'; menu: string; supplier: string; batch: string; step1: string; step2: string; step3: string; temperature: string };
 type RecordLinkType = 'area' | 'meal' | 'ingredient' | 'batch' | 'supplier';
 type RecordLink = { id: string; type: RecordLinkType; value: string };
-type InspectionRecord = { id: string; inspectionId: string; school: string; date: string; team: string; areas: string[]; results: Record<string, CriterionResult>; linkedMealIds?: string[]; relatedLinks?: RecordLink[]; findings: string; evidence: string; conclusion: string; recommendation: string; signature: string; incident: boolean };
-type Remediation = { id: string; school: string; finding: string; severity: Severity; owner: string; due: string; status: string; log: string; decision: string };
-type Alert = { id: string; school: string; onset: string; cases: number; symptoms: string; food: string; supplier: string; batch: string; status: 'new' | 'contained' | 'investigating' | 'closed'; notified: string; containment: string; traceability: string };
+type InspectionRecord = { id: string; inspectionId: string; school: string; date: string; team: string; areas: string[]; results: Record<string, CriterionResult>; linkedMealIds?: string[]; relatedLinks?: RecordLink[]; inspectionItems?: FieldInspectionItem[]; findings: string; evidence: string; conclusion: string; deadline?: string; recommendation: string; signature: string; incident: boolean };
+type Remediation = { id: string; school: string; finding: string; severity: Severity; owner: string; due: string; status: string; log: string; decision: string; sourceRecordId?: string };
+type Alert = { id: string; school: string; onset: string; cases: number; symptoms: string; food: string; supplier: string; batch: string; status: 'new' | 'contained' | 'investigating' | 'closed'; notified: string; containment: string; traceability: string; sourceRecordId?: string };
 
 const categories = ['Hồ sơ pháp lý & hành chính', 'Cơ sở vật chất & quy trình một chiều', 'Nước, chất thải & côn trùng', 'Sức khỏe & tập huấn nhân viên', 'Tiếp nhận & truy xuất nhà cung cấp', 'Bảo quản & kho', 'Chế biến thực phẩm', 'Kiểm thực ba bước', 'Lưu mẫu thức ăn', 'Vệ sinh & khử khuẩn', 'Thực đơn, dị ứng & ứng phó sự cố'];
 const categoryIcons = [FileText, Building2, Droplets, Stethoscope, Truck, Boxes, CookingPot, ClipboardList, ClipboardCheck, Sparkles, ShieldAlert];
@@ -108,13 +109,39 @@ function load<T>(key: string, fallback: T): T {
       localStorage.setItem(key, JSON.stringify(normalized));
       return normalized as T;
     }
-    if (key === 'attp-records' && Array.isArray(parsed)) return parsed.map(record => ({ ...record, signature: typeof record.signature === 'string' && record.signature.startsWith('data:') ? record.signature : '' })) as T;
+    if (key === 'attp-records' && Array.isArray(parsed)) return parsed.map(record => ({
+      ...record,
+      areas: Array.isArray(record.areas) ? record.areas.filter(Boolean) : [],
+      results: record.results && typeof record.results === 'object' ? record.results : {},
+      relatedLinks: Array.isArray(record.relatedLinks) ? record.relatedLinks.filter(link => link && link.value).map(link => ({ ...link, value: String(link.value) })) : [],
+      inspectionItems: Array.isArray(record.inspectionItems) ? record.inspectionItems.map(item => ({ id: item.id || uid('item'), title: item.title || '', detail: item.detail || '', note: item.note || '', evidence: item.evidence || '', status: item.status || 'na' })) : [],
+      findings: typeof record.findings === 'string' ? record.findings : '',
+      evidence: typeof record.evidence === 'string' ? record.evidence : '',
+      signature: typeof record.signature === 'string' && record.signature.startsWith('data:') ? record.signature : '',
+    })) as T;
     return parsed as T;
   } catch { return fallback; }
 }
 function uid(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 function save(key: string, value: unknown) { localStorage.setItem(key, JSON.stringify(value)); }
 function formatDate(date: string) { if (!date) return '—'; return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(`${date}T00:00:00`)); }
+function recordLinkValue(record: InspectionRecord, type: RecordLinkType) { return record.relatedLinks?.find(link => link.type === type)?.value || ''; }
+function recordFindingText(record: InspectionRecord) {
+  const itemText = (record.inspectionItems || []).map(item => [item.title, item.detail, item.note].filter(Boolean).join(': ')).filter(Boolean).join('\n');
+  return itemText || record.findings || 'Chưa có nội dung ghi nhận';
+}
+function recordEvidenceText(record: InspectionRecord) {
+  const itemEvidence = (record.inspectionItems || []).map(item => item.evidence).filter(Boolean);
+  return itemEvidence.length > 0 ? itemEvidence.join(', ') : record.evidence || 'Chưa có';
+}
+function recordTraceabilityText(record: InspectionRecord) {
+  return [
+    recordLinkValue(record, 'meal') && `Món ăn / bữa ăn: ${recordLinkValue(record, 'meal')}`,
+    recordLinkValue(record, 'ingredient') && `Nguyên liệu: ${recordLinkValue(record, 'ingredient')}`,
+    recordLinkValue(record, 'batch') && `Lô thực phẩm: ${recordLinkValue(record, 'batch')}`,
+    recordLinkValue(record, 'supplier') && `Nhà cung cấp: ${recordLinkValue(record, 'supplier')}`,
+  ].filter(Boolean).join(' · ');
+}
 function statusLabel(status: string) { return ({ planned: 'Đã lên lịch', 'in-progress': 'Đang thực hiện', completed: 'Đã hoàn tất', open: 'Mở', progress: 'Đang xử lý', closed: 'Đã đóng', new: 'Mới tiếp nhận', contained: 'Đã khoanh vùng', investigating: 'Đang điều tra' } as Record<string, string>)[status] || status; }
 function severityLabel(s: Severity | undefined) { return ({ critical: 'Nghiêm trọng', major: 'Quan trọng', minor: 'Nhẹ' })[s || 'minor']; }
 
@@ -352,6 +379,22 @@ function EvidencePicker({ value, onChange, testId }: { value: string; onChange: 
     </div>}
   </div>;
 }
+function InspectionEvidenceActions({ value, onChange, testId }: { value: string; onChange: (value: string) => void; testId: string }) {
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const handleFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) onChange(file.name);
+    event.target.value = '';
+  };
+  return <div className="space-y-2">
+    <input ref={uploadInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} data-testid={`${testId}-upload-input`} />
+    <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} data-testid={`${testId}-camera-input`} />
+    <button type="button" className="btn btn-quiet w-full justify-start px-3 py-2 text-[11px]" onClick={() => cameraInputRef.current?.click()} data-testid={`${testId}-camera`}><Camera size={13}/> Chụp ảnh</button>
+    <button type="button" className="btn btn-quiet w-full justify-start px-3 py-2 text-[11px]" onClick={() => uploadInputRef.current?.click()} data-testid={`${testId}-upload`}><Upload size={13}/> Upload ảnh</button>
+    {value && <div className="truncate rounded-md bg-secondary px-2 py-1 text-[10px] text-primary" title={value}>{value}</div>}
+  </div>;
+}
 function DocumentPicker({ value, onChange, testId }: { value: string; onChange: (value: string) => void; testId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const handleFile = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -554,10 +597,11 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
       record.recommendation,
       ...record.areas,
       ...(record.relatedLinks || []).map(link => link.value),
+      ...(record.inspectionItems || []).flatMap(item => [item.title, item.detail, item.note]),
     ].join(' ').toLowerCase();
     const matchesSearch = searchableText.includes(query);
     const matchesTime = (!fromDate || record.date >= fromDate) && (!toDate || record.date <= toDate);
-    const matchesType = filter === 'all' || (filter === 'incident' ? record.incident : Object.values(record.results).some(result => result.status === 'fail'));
+    const matchesType = filter === 'all' || (filter === 'incident' ? record.incident : recordFailedCount(record) > 0);
     return matchesSearch && matchesTime && matchesType;
   });
   const openNew = () => { localStorage.removeItem('attp-pending-inspection-id'); setEditing(null); setShowEditor(true); };
@@ -579,7 +623,7 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <button className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-quiet'} py-2 text-xs`} onClick={() => setFilter('all')} data-testid="button-filter-all">Tất cả <span className="ml-1 opacity-70">{records.length}</span></button>
-            <button className={`btn ${filter === 'fail' ? 'btn-primary' : 'btn-quiet'} py-2 text-xs`} onClick={() => setFilter('fail')} data-testid="button-filter-fail">Có kiến nghị <span className="ml-1 opacity-70">{records.filter(record => Object.values(record.results).some(result => result.status === 'fail')).length}</span></button>
+            <button className={`btn ${filter === 'fail' ? 'btn-primary' : 'btn-quiet'} py-2 text-xs`} onClick={() => setFilter('fail')} data-testid="button-filter-fail">Có kiến nghị <span className="ml-1 opacity-70">{records.filter(record => recordFailedCount(record) > 0).length}</span></button>
             <button className={`btn ${filter === 'incident' ? 'btn-primary' : 'btn-quiet'} py-2 text-xs`} onClick={() => setFilter('incident')} data-testid="button-filter-incident">Có sự cố</button>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -603,12 +647,12 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
             <span>Cơ sở</span><span>Ngày & tổ kiểm tra</span><span>Khu vực</span><span>Kết quả</span><span/>
           </div>
           {filtered.map(record => {
-            const failedCount = Object.values(record.results).filter(result => result.status === 'fail').length;
+            const failedCount = recordFailedCount(record);
             return <div key={record.id} className="grid grid-cols-[1.35fr_1fr_.85fr_1fr_64px] items-center gap-4 border-b border-border px-5 py-4 transition-colors hover:bg-muted/35">
                <div><div className="text-sm font-semibold">{record.school}</div><div className="mt-1 text-[10px] text-muted-foreground">Mã {record.id.toUpperCase()} · {record.findings ? 'Có nội dung ghi nhận' : 'Chưa có nội dung'}</div></div>
               <div><div className="text-xs font-medium">{formatDate(record.date)}</div><div className="mt-1 text-xs text-muted-foreground">{record.team}</div></div>
                <div className="text-xs text-muted-foreground">{record.areas.length ? `${record.areas.length} khu vực` : 'Chưa gắn khu vực'}</div>
-              <div>{failedCount > 0 ? <Badge tone="red"><AlertTriangle size={11}/> {failedCount} kiến nghị</Badge> : <Badge tone="teal"><CheckCircle2 size={11}/> Đạt</Badge>}</div>
+               <div>{failedCount > 0 ? <Badge tone="red"><AlertTriangle size={11}/> {failedCount} kiến nghị</Badge> : recordHasUnassessedItems(record) ? <Badge tone="amber">Chưa đánh giá</Badge> : <Badge tone="teal"><CheckCircle2 size={11}/> Đạt</Badge>}</div>
               <div className="flex items-center gap-1"><button className="btn btn-quiet h-9 w-9 p-0" title="Xem chi tiết" aria-label="Xem chi tiết" onClick={() => setDetail(record)} data-testid={`button-view-record-${record.id}`}><Eye size={15}/></button><button className="btn btn-quiet h-9 w-9 p-0" title="Sửa biên bản" aria-label="Sửa biên bản" onClick={() => { setEditing(record); setShowEditor(true); }} data-testid={`button-edit-record-${record.id}`}><Pencil size={15}/></button></div>
             </div>;
           })}
@@ -624,6 +668,12 @@ function Records({ records, inspections, setRecords, setInspections, notify, onA
 function criterionResultLabel(status: ResultStatus) {
   return status === 'pass' ? 'Đạt' : status === 'fail' ? 'Không đạt' : 'K/Áp dụng';
 }
+function recordFailedCount(record: InspectionRecord) {
+  return Object.values(record.results).filter(result => result.status === 'fail').length + (record.inspectionItems || []).filter(item => item.status === 'fail').length;
+}
+function recordHasUnassessedItems(record: InspectionRecord) {
+  return Object.values(record.results).some(result => result.status === 'na') || (record.inspectionItems || []).some(item => item.status === 'na');
+}
 
 const recordLinkTypeLabels: Record<RecordLinkType, string> = {
   area: 'Khu vực',
@@ -634,20 +684,24 @@ const recordLinkTypeLabels: Record<RecordLinkType, string> = {
 };
 
 function InspectionRecordDetailModal({ record, onClose }: { record: InspectionRecord; onClose: () => void }) {
-  const failedCount = Object.values(record.results).filter(result => result.status === 'fail').length;
+  const failedCount = recordFailedCount(record);
   const criteria = load<Criteria[]>('attp-criteria', seedCriteria);
   const criteriaById = new Map(criteria.map(criterion => [criterion.id, criterion]));
   const resultEntries = Object.entries(record.results);
+  const inspectionItems = record.inspectionItems || [];
   return <Modal title="Chi tiết biên bản kiểm tra" onClose={onClose} wide>
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-primary/20 bg-secondary/35 p-4">
         <div><p className="section-label">Biên bản đã nhập tại hiện trường</p><h3 className="mt-1 text-lg font-semibold">{record.school}</h3><p className="mt-1 text-xs text-muted-foreground">Mã {record.id.toUpperCase()} · {formatDate(record.date)} · {record.team}</p></div>
         <Badge tone={record.signature ? 'teal' : 'amber'}>{record.signature ? 'Đã ký tay' : 'Chờ ký tay'}</Badge>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3"><Detail label="Khu vực kiểm tra" value={record.areas.join(', ') || '—'} /><Detail label="Kết luận" value={record.conclusion || 'Chưa cập nhật'} /><Detail label="Kết quả" value={failedCount ? `${failedCount} kiến nghị` : 'Đạt'} /></div>
+       <div className="grid gap-4 sm:grid-cols-3"><Detail label="Khu vực kiểm tra" value={record.areas.join(', ') || '—'} /><Detail label="Kết luận" value={record.conclusion || 'Chưa cập nhật'} /><Detail label="Kết quả" value={failedCount ? `${failedCount} kiến nghị` : recordHasUnassessedItems(record) ? 'Chưa đánh giá' : 'Đạt'} /></div>
       <div>
-        <div className="mb-2 flex items-center justify-between"><div><p className="section-label">Nội dung đã ghi nhận</p><h3 className="mt-1 font-semibold">Kết quả từng tiêu chí</h3></div><span className="text-xs text-muted-foreground">{resultEntries.length} tiêu chí</span></div>
-        {resultEntries.length > 0 ? <div className="space-y-2">{resultEntries.map(([criterionId, result]) => {
+        <div className="mb-2 flex items-center justify-between"><div><p className="section-label">Nội dung đã ghi nhận</p><h3 className="mt-1 font-semibold">{inspectionItems.length > 0 ? 'Nội dung từng phần' : 'Kết quả từng tiêu chí'}</h3></div><span className="text-xs text-muted-foreground">{inspectionItems.length > 0 ? `${inspectionItems.length} phần` : `${resultEntries.length} tiêu chí`}</span></div>
+        {inspectionItems.length > 0 ? <div className="space-y-3">{inspectionItems.map((item, index) => <div key={item.id} className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-3"><div className="flex items-start gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-bold text-primary">{index + 1}</span><div><div className="text-sm font-semibold">{item.title || 'Nội dung chưa đặt tên'}</div><div className="mt-1 text-xs text-muted-foreground">{item.detail || 'Chưa có chi tiết ghi nhận'}</div></div></div><Badge tone={item.status === 'fail' ? 'red' : item.status === 'pass' ? 'teal' : 'neutral'}>{criterionResultLabel(item.status)}</Badge></div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2"><Detail label="Ghi chú riêng" value={item.note || 'Không có'} /><Detail label="Ảnh minh chứng" value={item.evidence || 'Chưa có'} /></div>
+        </div>)}</div> : resultEntries.length > 0 ? <div className="space-y-2">{resultEntries.map(([criterionId, result]) => {
           const criterion = criteriaById.get(criterionId);
           return <div key={criterionId} className="rounded-xl border border-border bg-card p-4">
             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start"><div className="min-w-0"><div className="flex items-start gap-2"><span className="rounded bg-secondary px-1.5 py-0.5 font-[var(--app-font-mono)] text-[10px] font-bold text-primary">{criterion?.code || criterionId}</span><span className="text-sm font-semibold leading-snug">{criterion?.title || 'Tiêu chí đã được nhập trong biên bản'}</span></div></div><Badge tone={result.status === 'fail' ? 'red' : result.status === 'pass' ? 'teal' : 'neutral'}>{criterionResultLabel(result.status)}</Badge></div>
@@ -765,20 +819,26 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   const selected = inspections.find(inspection => inspection.id === inspectionId) || initialInspection;
   const [date, setDate] = useState(record?.date || selected?.date || '2025-09-15');
   const [team, setTeam] = useState(record?.team || selected?.team || teams[0]);
-  const [areas, setAreas] = useState(record?.areas || []);
-  const [findings, setFindings] = useState(record?.findings || '');
-  const [evidence, setEvidence] = useState(record?.evidence || '');
+  const [school, setSchool] = useState(record?.school || selected?.school || schools[0]);
+  const [inspectionItems, setInspectionItems] = useState<FieldInspectionItem[]>(() => record?.inspectionItems?.length ? record.inspectionItems.map(item => ({ id: item.id || uid('item'), title: item.title || '', detail: item.detail || '', note: item.note || '', evidence: item.evidence || '', status: item.status || 'na' })) : [{ id: uid('item'), title: '', detail: record?.findings || '', note: '', evidence: '', status: 'na' }]);
   const [conclusion, setConclusion] = useState(record?.conclusion || '');
+  const [deadline, setDeadline] = useState(record?.deadline || '');
   const [recommendation, setRecommendation] = useState(record?.recommendation || '');
   const [incident, setIncident] = useState(record?.incident || false);
   const [signature, setSignature] = useState(record?.signature?.startsWith('data:') ? record.signature : '');
-  const [relatedLinks, setRelatedLinks] = useState<RecordLink[]>(record?.relatedLinks || []);
-  const availableAreas = schoolAreaOptions[selected?.school || ''] || [];
-  const schoolMeals = seedMealLogs.filter(meal => meal.school === selected?.school);
+  const [relatedLinks, setRelatedLinks] = useState<RecordLink[]>(() => Object.keys(recordLinkTypeLabels).map(type => {
+    const linkType = type as RecordLinkType;
+    const savedLink = record?.relatedLinks?.find(link => link.type === linkType);
+    return savedLink ? { ...savedLink, value: savedLink.value || '' } : { id: uid('link'), type: linkType, value: linkType === 'area' ? (record?.areas || []).join(', ') : '' };
+  }));
+  const areas = relatedLinks.find(link => link.type === 'area' && link.value.trim())?.value ? [relatedLinks.find(link => link.type === 'area' && link.value.trim())!.value] : [];
+  const availableAreas = schoolAreaOptions[school] || [];
+  const schoolInspections = inspections.filter(inspection => inspection.school === school);
+  const schoolMeals = seedMealLogs.filter(meal => meal.school === school);
   const getLinkOptions = (type: RecordLinkType) => {
     if (type === 'area') return availableAreas;
     if (type === 'meal') return schoolMeals.map(meal => `${meal.meal} · ${meal.menu} · ${formatDate(meal.date)}`);
-    if (type === 'ingredient') return schoolIngredientOptions[selected?.school || ''] || [];
+    if (type === 'ingredient') return schoolIngredientOptions[school] || [];
     if (type === 'batch') return Array.from(new Set(schoolMeals.map(meal => meal.batch)));
     return Array.from(new Set(schoolMeals.map(meal => meal.supplier)));
   };
@@ -789,9 +849,30 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
     return () => window.removeEventListener('record-signature-change', syncSignature);
   }, []);
 
-  const addRelatedLink = () => setRelatedLinks(current => [...current, { id: uid('link'), type: 'area', value: '' }]);
-  const updateRelatedLink = (id: string, patch: Partial<RecordLink>) => setRelatedLinks(current => current.map(link => link.id === id ? { ...link, ...patch } : link));
-  const removeRelatedLink = (id: string) => setRelatedLinks(current => current.filter(link => link.id !== id));
+  const updateRelatedLinkValue = (type: RecordLinkType, value: string) => setRelatedLinks(current => current.map(link => link.type === type ? { ...link, value } : link));
+  const updateInspectionItem = (id: string, patch: Partial<FieldInspectionItem>) => setInspectionItems(current => current.map(item => item.id === id ? { ...item, ...patch } : item));
+  const addInspectionItem = () => setInspectionItems(current => [...current, { id: uid('item'), title: '', detail: '', note: '', evidence: '', status: 'na' }]);
+  const removeInspectionItem = (id: string) => setInspectionItems(current => current.length > 1 ? current.filter(item => item.id !== id) : current);
+  const changeSchool = (value: string) => {
+    setSchool(value);
+    const firstInspection = inspections.find(inspection => inspection.school === value);
+    if (firstInspection) {
+      setInspectionId(firstInspection.id);
+      setDate(firstInspection.date);
+      setTeam(firstInspection.team);
+      setRelatedLinks(current => current.map(link => ({ ...link, value: '' })));
+    }
+  };
+  const changeInspection = (value: string) => {
+    setInspectionId(value);
+    const inspection = inspections.find(item => item.id === value);
+    if (inspection) {
+      setSchool(inspection.school);
+      setDate(inspection.date);
+      setTeam(inspection.team);
+      setRelatedLinks(current => current.map(link => ({ ...link, value: '' })));
+    }
+  };
   const buildRecord = (): InspectionRecord | null => selected ? {
     id: record?.id || uid('r'),
     inspectionId,
@@ -801,9 +882,11 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
     areas,
     results: record?.results || {},
     relatedLinks: relatedLinks.filter(link => link.value.trim()),
-    findings,
-    evidence,
+    inspectionItems: inspectionItems.filter(item => item.title.trim() || item.detail.trim() || item.note.trim() || item.evidence.trim()),
+    findings: inspectionItems.filter(item => item.detail.trim() || item.note.trim()).map(item => `${item.title.trim() ? `${item.title.trim()}: ` : ''}${item.detail.trim() || item.note.trim()}`).join('\n'),
+    evidence: record?.evidence || '',
     conclusion,
+    deadline,
     recommendation,
     signature,
     incident,
@@ -819,24 +902,27 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   } : undefined;
 
   return <Modal title={record ? 'Chỉnh sửa biên bản kiểm tra' : 'Tạo biên bản kiểm tra'} onClose={onClose} wide>
-    <div className="grid gap-4 sm:grid-cols-3">
-       <label className="text-xs font-semibold sm:col-span-2">Lượt kiểm tra<select className="field mt-1.5" value={inspectionId} onChange={event => { setInspectionId(event.target.value); const inspection = inspections.find(item => item.id === event.target.value); if (inspection) { setDate(inspection.date); setTeam(inspection.team); setAreas([]); setRelatedLinks([]); } }} data-testid="select-record-inspection">{inspections.map(inspection => <option value={inspection.id} key={inspection.id}>{inspection.school} · {formatDate(inspection.date)}</option>)}</select></label>
-      <label className="text-xs font-semibold">Ngày lập<input className="field mt-1.5" type="date" value={date} onChange={event => setDate(event.target.value)} data-testid="input-record-date"/></label>
-      <label className="text-xs font-semibold">Tổ kiểm tra<input className="field mt-1.5" value={team} onChange={event => setTeam(event.target.value)} data-testid="input-record-team"/></label>
-       <label className="text-xs font-semibold sm:col-span-2">Khu vực đã kiểm tra <span className="font-normal text-muted-foreground">(nếu có)</span><input className="field mt-1.5" value={areas.join(', ')} onChange={event => setAreas(event.target.value.split(',').map(value => value.trim()).filter(Boolean))} placeholder="Ví dụ: Khu vực nấu, kho khô" data-testid="input-record-areas"/></label>
+     <div className="mb-2"><p className="section-label">Bước 1 · Xác định hồ sơ</p><p className="mt-1 text-xs text-muted-foreground">Chọn trường trước, sau đó chọn đúng lượt kiểm tra của trường đó để dễ truy xuất.</p></div>
+     <div className="grid gap-4 sm:grid-cols-3">
+       <label className="text-xs font-semibold sm:col-span-2">Trường / cơ sở<select className="field mt-1.5" value={school} onChange={event => changeSchool(event.target.value)} data-testid="select-record-school">{Array.from(new Set(inspections.map(inspection => inspection.school))).map(item => <option value={item} key={item}>{item}</option>)}</select></label>
+       <label className="text-xs font-semibold">Ngày lập<input className="field mt-1.5" type="date" value={date} onChange={event => setDate(event.target.value)} data-testid="input-record-date"/></label>
+       <label className="text-xs font-semibold sm:col-span-2">Lượt kiểm tra<select className="field mt-1.5" value={inspectionId} onChange={event => changeInspection(event.target.value)} data-testid="select-record-inspection">{schoolInspections.map(inspection => <option value={inspection.id} key={inspection.id}>{formatDate(inspection.date)} · {inspection.team} · {inspection.type === 'surprise' ? 'Đột xuất' : 'Định kỳ'}</option>)}</select></label>
+       <label className="text-xs font-semibold">Tổ kiểm tra<input className="field mt-1.5" value={team} onChange={event => setTeam(event.target.value)} data-testid="input-record-team"/></label>
     </div>
     <div className="my-6 space-y-4 border-t border-border pt-5">
-       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><p className="section-label">Nội dung biên bản</p><h3 className="mt-1 font-semibold">Ghi nhận trực tiếp tại hiện trường</h3><p className="mt-1 text-xs text-muted-foreground">Có thể ghi phần đạt, điểm chưa phù hợp, vị trí và diễn biến.</p></div><Badge tone="blue"><FileText size={11}/> Nhập tự do</Badge></div>
-      <label className="block text-xs font-semibold">Nội dung kiểm tra & ghi nhận<textarea className="field mt-1.5 min-h-40" value={findings} onChange={event => setFindings(event.target.value)} placeholder="Ví dụ: Đã kiểm tra khu vực nấu. Dụng cụ sống/chín được phân biệt; sàn khu vực chế biến còn đọng nước ở góc phía sau..." data-testid="textarea-record-findings"/></label>
-       <div className="rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4">
-         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><div className="flex items-center gap-2 text-xs font-semibold"><Link2 size={14} className="text-primary"/> Thông tin liên quan <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-normal text-muted-foreground">Tùy chọn</span></div><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Chỉ thêm khi cần tra lại món ăn, nguyên liệu, lô thực phẩm hoặc nhà cung cấp từ biên bản này.</p></div><button type="button" className="btn btn-quiet shrink-0 px-3 py-2 text-xs" onClick={addRelatedLink} data-testid="button-add-record-link"><Plus size={14}/> Thêm thông tin</button></div>
-         {relatedLinks.length > 0 && <div className="mt-3 space-y-2"><p className="text-[11px] text-muted-foreground">Chọn loại thông tin trước, sau đó chọn nội dung tương ứng.</p>{relatedLinks.map(link => { const options = getLinkOptions(link.type); return <div key={link.id} className="flex flex-col gap-2 sm:flex-row sm:items-center"><select className="field py-2 text-xs sm:w-44" value={link.type} onChange={event => updateRelatedLink(link.id, { type: event.target.value as RecordLinkType, value: '' })} aria-label="Loại thông tin liên quan" data-testid={`select-record-link-type-${link.id}`}>{Object.entries(recordLinkTypeLabels).map(([type, label]) => <option value={type} key={type}>{label}</option>)}</select>{options.length > 0 ? <select className="field min-w-0 flex-1 py-2 text-xs" value={link.value} onChange={event => updateRelatedLink(link.id, { value: event.target.value })} aria-label={`Chọn ${recordLinkTypeLabels[link.type].toLowerCase()}`} data-testid={`select-record-link-value-${link.id}`}><option value="">Chọn {recordLinkTypeLabels[link.type].toLowerCase()} của trường</option>{options.map(option => <option value={option} key={option}>{option}</option>)}</select> : <input className="field min-w-0 flex-1 py-2 text-xs" value={link.value} onChange={event => updateRelatedLink(link.id, { value: event.target.value })} placeholder={`Nhập ${recordLinkTypeLabels[link.type].toLowerCase()}`} data-testid={`input-record-link-value-${link.id}`}/>}<button type="button" className="btn btn-quiet self-end p-2 text-destructive sm:self-auto" onClick={() => removeRelatedLink(link.id)} aria-label="Xóa thông tin liên quan" data-testid={`button-remove-record-link-${link.id}`}><Trash2 size={14}/></button></div>; })}</div>}
-      </div>
+       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"><div><p className="section-label">Bước 2 · Ghi nhận tại hiện trường</p><h3 className="mt-1 font-semibold">Nội dung kiểm tra</h3><p className="mt-1 text-xs text-muted-foreground">Tách từng nội dung cần kiểm tra để ghi chi tiết, đánh giá và minh chứng riêng.</p></div><button type="button" className="btn btn-quiet shrink-0 px-3 py-2 text-xs" onClick={addInspectionItem} data-testid="button-add-inspection-item"><Plus size={14}/> Thêm nội dung</button></div>
+       <div className="space-y-3">{inspectionItems.map((item, index) => <div className="rounded-xl border border-border bg-card p-4" key={item.id}>
+         <div className="flex items-center gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-bold text-primary">{index + 1}</span><input className="field min-w-0 flex-1 py-2 text-xs font-semibold" value={item.title} onChange={event => updateInspectionItem(item.id, { title: event.target.value })} placeholder="Nhập tên nội dung kiểm tra..." aria-label={`Tên nội dung kiểm tra ${index + 1}`} data-testid={`input-inspection-item-title-${index}`}/>{inspectionItems.length > 1 && <button type="button" className="btn btn-quiet p-2 text-destructive" onClick={() => removeInspectionItem(item.id)} aria-label={`Xóa nội dung kiểm tra ${index + 1}`} data-testid={`button-remove-inspection-item-${index}`}><X size={14}/></button>}</div>
+         <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]"><label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Chi tiết nội dung<textarea className="field mt-1.5 min-h-28 text-xs font-normal normal-case tracking-normal" value={item.detail} onChange={event => updateInspectionItem(item.id, { detail: event.target.value })} placeholder="Nhập nhận xét hoặc tình trạng thực tế..." data-testid={`textarea-inspection-item-detail-${index}`}/></label><div><div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Minh chứng</div><div className="mt-1.5"><InspectionEvidenceActions value={item.evidence} onChange={value => updateInspectionItem(item.id, { evidence: value })} testId={`inspection-item-evidence-${index}`}/></div></div></div>
+         <label className="mt-3 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ghi chú riêng<textarea className="field mt-1.5 min-h-16 text-xs font-normal normal-case tracking-normal" value={item.note} onChange={event => updateInspectionItem(item.id, { note: event.target.value })} placeholder="Ghi chú thêm cho nội dung này..." data-testid={`textarea-inspection-item-note-${index}`}/></label>
+         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3"><span className="text-xs font-semibold">Đánh giá</span><button type="button" className={`btn px-3 py-1.5 text-xs ${item.status === 'pass' ? 'btn-primary' : 'btn-quiet'}`} onClick={() => updateInspectionItem(item.id, { status: 'pass' })} data-testid={`button-inspection-item-pass-${index}`}>Đạt</button><button type="button" className={`btn px-3 py-1.5 text-xs ${item.status === 'fail' ? 'btn-danger' : 'btn-quiet'}`} onClick={() => updateInspectionItem(item.id, { status: 'fail' })} data-testid={`button-inspection-item-fail-${index}`}>Không đạt</button><button type="button" className={`btn px-3 py-1.5 text-xs ${item.status === 'na' ? 'btn-primary' : 'btn-quiet'}`} onClick={() => updateInspectionItem(item.id, { status: 'na' })} data-testid={`button-inspection-item-na-${index}`}>Chưa đánh giá</button></div>
+       </div>)}</div>
+       <div className="rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4"><div className="flex items-center gap-2 text-xs font-semibold"><Link2 size={14} className="text-primary"/> Bước 3 · Thông tin để tra cứu</div><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Các trường dưới đây đều không bắt buộc. Chọn trực tiếp thông tin có liên quan đến biên bản.</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{Object.entries(recordLinkTypeLabels).filter(([type]) => type !== 'area').map(([type, label]) => { const linkType = type as RecordLinkType; const link = relatedLinks.find(item => item.type === linkType) || { id: `new-${linkType}`, type: linkType, value: '' }; const options = getLinkOptions(linkType); const canUseSelect = options.length > 0 && (!link.value || options.includes(link.value)); return <label className="text-xs font-semibold" key={linkType}>{label} <span className="font-normal text-muted-foreground">(không bắt buộc)</span>{canUseSelect ? <select className="field mt-1.5 py-2 text-xs font-normal" value={link.value} onChange={event => updateRelatedLinkValue(linkType, event.target.value)} data-testid={`select-record-link-${linkType}`}><option value="">Chọn {label.toLowerCase()}</option>{options.map(option => <option value={option} key={option}>{option}</option>)}</select> : <input className="field mt-1.5 py-2 text-xs font-normal" value={link.value} onChange={event => updateRelatedLinkValue(linkType, event.target.value)} placeholder={`Nhập ${label.toLowerCase()}`} data-testid={`input-record-link-${linkType}`}/>}</label>; })}</div></div>
     </div>
-    <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
-      <label className="text-xs font-semibold sm:col-span-2">Ảnh / tệp minh chứng<input className="field mt-1.5" value={evidence} onChange={event => setEvidence(event.target.value)} placeholder="Chụp ảnh hoặc ghi tên tệp minh chứng" data-testid="input-record-evidence"/></label>
+     <div className="mt-6 border-t border-border pt-5"><p className="section-label">Bước 4 · Kết luận và khắc phục</p><p className="mt-1 text-xs text-muted-foreground">Hoàn thiện kết luận, minh chứng và việc cần nhà trường xử lý.</p></div>
+     <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
       <label className="text-xs font-semibold">Kết luận<select className="field mt-1.5" value={conclusion} onChange={event => setConclusion(event.target.value)} data-testid="select-record-conclusion"><option value="">Chọn kết luận</option><option>Đạt</option><option>Đạt có điều kiện</option><option>Không đạt</option></select></label>
-      <label className="text-xs font-semibold">Hạn khắc phục <span className="font-normal text-muted-foreground">(nếu có)</span><input className="field mt-1.5" type="date" data-testid="input-record-remediation-date"/></label>
+       <label className="text-xs font-semibold">Hạn khắc phục <span className="font-normal text-muted-foreground">(nếu có)</span><input className="field mt-1.5" type="date" value={deadline} onChange={event => setDeadline(event.target.value)} data-testid="input-record-remediation-date"/></label>
       <label className="text-xs font-semibold sm:col-span-2">Kiến nghị khắc phục<textarea className="field mt-1.5 min-h-20" value={recommendation} onChange={event => setRecommendation(event.target.value)} placeholder="Chỉ nhập nếu có việc cần nhà trường khắc phục..." data-testid="textarea-record-recommendation"/></label>
       <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold sm:col-span-2"><input type="checkbox" checked={incident} onChange={event => setIncident(event.target.checked)} data-testid="checkbox-record-incident"/> Có dấu hiệu sự cố thực phẩm cần chuyển sang SOP Alert</label>
     </div>
