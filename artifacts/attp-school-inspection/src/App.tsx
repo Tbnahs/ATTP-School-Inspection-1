@@ -21,10 +21,10 @@ type CriterionResult = { status: ResultStatus; notes: string; evidence: string; 
 type FieldInspectionItem = { id: string; title: string; detail: string; note: string; evidence: string; status: ResultStatus };
 type MealLog = { id: string; school: string; date: string; meal: 'Sáng' | 'Trưa' | 'Xế'; menu: string; supplier: string; batch: string; step1: string; step2: string; step3: string; temperature: string };
 type RecordLinkType = 'area' | 'meal' | 'ingredient' | 'batch' | 'supplier';
-type RecordLink = { id: string; type: RecordLinkType; value: string };
+type RecordLink = { id: string; type: RecordLinkType; value: string; detail?: string; status?: ResultStatus; evidence?: string };
 type InspectionRecord = { id: string; inspectionId: string; school: string; date: string; team: string; areas: string[]; results: Record<string, CriterionResult>; linkedMealIds?: string[]; relatedLinks?: RecordLink[]; inspectionItems?: FieldInspectionItem[]; findings: string; evidence: string; conclusion: string; deadline?: string; recommendation: string; signature: string; incident: boolean };
-type Remediation = { id: string; school: string; finding: string; severity: Severity; owner: string; due: string; status: string; log: string; decision: string; sourceRecordId?: string };
-type Alert = { id: string; school: string; onset: string; cases: number; symptoms: string; food: string; supplier: string; batch: string; status: 'new' | 'contained' | 'investigating' | 'closed'; notified: string; containment: string; traceability: string; sourceRecordId?: string };
+type Remediation = { id: string; school: string; finding: string; severity: Severity; owner: string; due: string; status: string; log: string; decision: string; report?: string; verification?: 'pending' | 'approved' | 'rejected'; evidence?: string; sourceRecordId?: string };
+type Alert = { id: string; school: string; onset: string; cases: number; symptoms: string; food: string; ingredient?: string; supplier: string; batch: string; status: 'new' | 'contained' | 'investigating' | 'closed'; notified: string; notificationStatus?: 'pending' | 'sent'; containment: string; containmentStatus?: 'pending' | 'sealed' | 'sampled'; traceability: string; sourceRecordId?: string };
 
 const categories = ['Hồ sơ pháp lý & hành chính', 'Cơ sở vật chất & quy trình một chiều', 'Nước, chất thải & côn trùng', 'Sức khỏe & tập huấn nhân viên', 'Tiếp nhận & truy xuất nhà cung cấp', 'Bảo quản & kho', 'Chế biến thực phẩm', 'Kiểm thực ba bước', 'Lưu mẫu thức ăn', 'Vệ sinh & khử khuẩn', 'Thực đơn, dị ứng & ứng phó sự cố'];
 const categoryIcons = [FileText, Building2, Droplets, Stethoscope, Truck, Boxes, CookingPot, ClipboardList, ClipboardCheck, Sparkles, ShieldAlert];
@@ -113,8 +113,8 @@ function load<T>(key: string, fallback: T): T {
       ...record,
       areas: Array.isArray(record.areas) ? record.areas.filter(Boolean) : [],
       results: record.results && typeof record.results === 'object' ? record.results : {},
-      relatedLinks: Array.isArray(record.relatedLinks) ? record.relatedLinks.filter(link => link && link.value).map(link => ({ ...link, value: String(link.value) })) : [],
-      inspectionItems: Array.isArray(record.inspectionItems) ? record.inspectionItems.map(item => ({ id: item.id || uid('item'), title: item.title || '', detail: item.detail || '', note: item.note || '', evidence: item.evidence || '', status: item.status || 'na' })) : [],
+      relatedLinks: Array.isArray(record.relatedLinks) ? record.relatedLinks.filter((link: RecordLink) => link && (link.value || link.detail || link.evidence || link.status)).map((link: RecordLink) => ({ ...link, value: String(link.value || ''), detail: String(link.detail || ''), evidence: String(link.evidence || ''), status: link.status || 'na' })) : [],
+      inspectionItems: Array.isArray(record.inspectionItems) ? record.inspectionItems.map((item: FieldInspectionItem) => ({ id: item.id || uid('item'), title: item.title || '', detail: item.detail || '', note: item.note || '', evidence: item.evidence || '', status: item.status || 'na' })) : [],
       findings: typeof record.findings === 'string' ? record.findings : '',
       evidence: typeof record.evidence === 'string' ? record.evidence : '',
       signature: typeof record.signature === 'string' && record.signature.startsWith('data:') ? record.signature : '',
@@ -158,6 +158,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const nav = [
     { href: '/schedule', label: 'Lịch kiểm tra', icon: CalendarDays },
     { href: '/records', label: 'Biên bản kiểm tra', icon: ClipboardCheck },
+    { href: '/remediations', label: 'Kiến nghị & xử lý vi phạm', icon: AlertTriangle },
     { href: '/alerts', label: 'Cảnh báo ngộ độc (SOP Alert)', icon: ShieldAlert },
   ];
   const isActive = (href: string) => location === href || (href === '/records' && location === '/records/new');
@@ -669,10 +670,14 @@ function criterionResultLabel(status: ResultStatus) {
   return status === 'pass' ? 'Đạt' : status === 'fail' ? 'Không đạt' : 'K/Áp dụng';
 }
 function recordFailedCount(record: InspectionRecord) {
-  return Object.values(record.results).filter(result => result.status === 'fail').length + (record.inspectionItems || []).filter(item => item.status === 'fail').length;
+  return Object.values(record.results).filter(result => result.status === 'fail').length
+    + (record.inspectionItems || []).filter(item => item.status === 'fail').length
+    + (record.relatedLinks || []).filter(link => link.type !== 'area' && link.status === 'fail').length;
 }
 function recordHasUnassessedItems(record: InspectionRecord) {
-  return Object.values(record.results).some(result => result.status === 'na') || (record.inspectionItems || []).some(item => item.status === 'na');
+  return Object.values(record.results).some(result => result.status === 'na')
+    || (record.inspectionItems || []).some(item => item.status === 'na')
+    || (record.relatedLinks || []).some(link => link.type !== 'area' && link.status === 'na');
 }
 
 const recordLinkTypeLabels: Record<RecordLinkType, string> = {
@@ -682,6 +687,59 @@ const recordLinkTypeLabels: Record<RecordLinkType, string> = {
   batch: 'Lô thực phẩm',
   supplier: 'Nhà cung cấp',
 };
+
+const recordInspectionLinkTypes: Array<Exclude<RecordLinkType, 'area'>> = ['meal', 'ingredient', 'batch', 'supplier'];
+
+function RecordLinkInspectionFields({ links, getOptions, onChange }: {
+  links: RecordLink[];
+  getOptions: (type: RecordLinkType) => string[];
+  onChange: (type: RecordLinkType, patch: Partial<RecordLink>) => void;
+}) {
+  return <div className="rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4">
+    <div className="flex items-center gap-2 text-xs font-semibold"><Link2 size={14} className="text-primary"/> Bước 3 · Kiểm tra thông tin truy xuất</div>
+    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Mỗi thông tin truy xuất được ghi nhận như một nội dung kiểm tra riêng: chọn dữ liệu, nhập chi tiết, đánh giá và thêm ảnh minh chứng.</p>
+    <div className="mt-4 space-y-3">
+      {recordInspectionLinkTypes.map((type, index) => {
+        const label = recordLinkTypeLabels[type];
+        const link = links.find(item => item.type === type) || { id: `new-${type}`, type, value: '', detail: '', evidence: '', status: 'na' as ResultStatus };
+        const options = getOptions(type);
+        const hasCurrentValue = Boolean(link.value && !options.includes(link.value));
+        return <div className="rounded-xl border border-border bg-card p-4" key={type} data-testid={`record-link-inspection-row-${type}`}>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-bold text-primary">{index + 1}</span>
+            <span className="text-sm font-semibold">{label}</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[minmax(220px,.75fr)_minmax(0,1.25fr)]">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Thông tin {label.toLowerCase()}
+              <select className="field mt-1.5 py-2 text-xs font-normal normal-case tracking-normal" value={link.value} onChange={event => onChange(type, { value: event.target.value })} data-testid={`select-record-link-${type}`}>
+                <option value="">Chọn {label.toLowerCase()}</option>
+                {hasCurrentValue && <option value={link.value}>{link.value}</option>}
+                {options.map(option => <option value={option} key={option}>{option}</option>)}
+              </select>
+            </label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Chi tiết nội dung kiểm tra
+              <textarea className="field mt-1.5 min-h-20 text-xs font-normal normal-case tracking-normal" value={link.detail || ''} onChange={event => onChange(type, { detail: event.target.value })} placeholder={`Nhập nhận xét về ${label.toLowerCase()}...`} data-testid={`textarea-record-link-detail-${type}`}/>
+            </label>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Đánh giá</div>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                <button type="button" className={`btn px-3 py-1.5 text-xs ${link.status === 'pass' ? 'btn-primary' : 'btn-quiet'}`} onClick={() => onChange(type, { status: 'pass' })} data-testid={`button-record-link-pass-${type}`}>Đạt</button>
+                <button type="button" className={`btn px-3 py-1.5 text-xs ${link.status === 'fail' ? 'btn-danger' : 'btn-quiet'}`} onClick={() => onChange(type, { status: 'fail' })} data-testid={`button-record-link-fail-${type}`}>Không đạt</button>
+                <button type="button" className={`btn px-3 py-1.5 text-xs ${link.status === 'na' ? 'btn-primary' : 'btn-quiet'}`} onClick={() => onChange(type, { status: 'na' })} data-testid={`button-record-link-na-${type}`}>Chưa đánh giá</button>
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Up / chụp ảnh</div>
+              <div className="mt-1.5"><EvidencePicker value={link.evidence || ''} onChange={value => onChange(type, { evidence: value })} testId={`record-link-evidence-${type}`}/></div>
+            </div>
+          </div>
+        </div>;
+      })}
+    </div>
+  </div>;
+}
 
 function InspectionRecordDetailModal({ record, onClose }: { record: InspectionRecord; onClose: () => void }) {
   const failedCount = recordFailedCount(record);
@@ -710,8 +768,11 @@ function InspectionRecordDetailModal({ record, onClose }: { record: InspectionRe
         })}</div> : <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">Biên bản này chưa có kết quả chi tiết theo từng tiêu chí.</div>}
        </div>
        {record.relatedLinks && record.relatedLinks.length > 0 && <div className="rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4">
-         <div className="flex items-center gap-2 text-xs font-semibold"><Tag size={14} className="text-primary"/> Liên kết truy xuất</div>
-         <div className="mt-3 flex flex-wrap gap-2">{record.relatedLinks.map(link => <span key={link.id} className="tag bg-card text-foreground"><span className="text-primary">{recordLinkTypeLabels[link.type]}</span> · {link.value}</span>)}</div>
+         <div className="flex items-center gap-2 text-xs font-semibold"><Tag size={14} className="text-primary"/> Kiểm tra thông tin truy xuất</div>
+         <div className="mt-3 space-y-2">{record.relatedLinks.filter(link => link.type !== 'area').map(link => <div key={link.id} className="rounded-lg border border-border bg-card p-3">
+           <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-semibold text-primary">{recordLinkTypeLabels[link.type]}</span><Badge tone={link.status === 'fail' ? 'red' : link.status === 'pass' ? 'teal' : 'neutral'}>{criterionResultLabel(link.status || 'na')}</Badge></div>
+           <div className="mt-2 grid gap-3 sm:grid-cols-3"><Detail label="Thông tin đã chọn" value={link.value || 'Chưa chọn'} /><Detail label="Chi tiết kiểm tra" value={link.detail || 'Chưa ghi nhận'} /><Detail label="Ảnh minh chứng" value={link.evidence || 'Chưa có'} /></div>
+         </div>)}</div>
        </div>}
        <div className="grid gap-4 sm:grid-cols-2">
         <div><div className="mb-1 text-xs font-semibold">Phát hiện & bằng chứng tổng hợp</div><div className="rounded-lg bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">{record.findings || 'Không ghi nhận'}</div></div>
@@ -829,7 +890,7 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   const [relatedLinks, setRelatedLinks] = useState<RecordLink[]>(() => Object.keys(recordLinkTypeLabels).map(type => {
     const linkType = type as RecordLinkType;
     const savedLink = record?.relatedLinks?.find(link => link.type === linkType);
-    return savedLink ? { ...savedLink, value: savedLink.value || '' } : { id: uid('link'), type: linkType, value: linkType === 'area' ? (record?.areas || []).join(', ') : '' };
+    return savedLink ? { ...savedLink, value: savedLink.value || '', detail: savedLink.detail || '', evidence: savedLink.evidence || '', status: savedLink.status || 'na' } : { id: uid('link'), type: linkType, value: linkType === 'area' ? (record?.areas || []).join(', ') : '', detail: '', evidence: '', status: 'na' };
   }));
   const areas = relatedLinks.find(link => link.type === 'area' && link.value.trim())?.value ? [relatedLinks.find(link => link.type === 'area' && link.value.trim())!.value] : [];
   const availableAreas = schoolAreaOptions[school] || [];
@@ -850,6 +911,7 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
   }, []);
 
   const updateRelatedLinkValue = (type: RecordLinkType, value: string) => setRelatedLinks(current => current.map(link => link.type === type ? { ...link, value } : link));
+  const updateRelatedLink = (type: RecordLinkType, patch: Partial<RecordLink>) => setRelatedLinks(current => current.map(link => link.type === type ? { ...link, ...patch } : link));
   const updateInspectionItem = (id: string, patch: Partial<FieldInspectionItem>) => setInspectionItems(current => current.map(item => item.id === id ? { ...item, ...patch } : item));
   const addInspectionItem = () => setInspectionItems(current => [...current, { id: uid('item'), title: '', detail: '', note: '', evidence: '', status: 'na' }]);
   const removeInspectionItem = (id: string) => setInspectionItems(current => current.length > 1 ? current.filter(item => item.id !== id) : current);
@@ -881,7 +943,7 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
     team,
     areas,
     results: record?.results || {},
-    relatedLinks: relatedLinks.filter(link => link.value.trim()),
+    relatedLinks: relatedLinks.filter(link => link.value.trim() || link.detail?.trim() || link.evidence?.trim() || link.status !== 'na'),
     inspectionItems: inspectionItems.filter(item => item.title.trim() || item.detail.trim() || item.note.trim() || item.evidence.trim()),
     findings: inspectionItems.filter(item => item.detail.trim() || item.note.trim()).map(item => `${item.title.trim() ? `${item.title.trim()}: ` : ''}${item.detail.trim() || item.note.trim()}`).join('\n'),
     evidence: record?.evidence || '',
@@ -917,7 +979,7 @@ function RecordEditorSimple({ record, initialInspectionId, inspections, onClose,
          <label className="mt-3 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ghi chú riêng<textarea className="field mt-1.5 min-h-16 text-xs font-normal normal-case tracking-normal" value={item.note} onChange={event => updateInspectionItem(item.id, { note: event.target.value })} placeholder="Ghi chú thêm cho nội dung này..." data-testid={`textarea-inspection-item-note-${index}`}/></label>
          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3"><span className="text-xs font-semibold">Đánh giá</span><button type="button" className={`btn px-3 py-1.5 text-xs ${item.status === 'pass' ? 'btn-primary' : 'btn-quiet'}`} onClick={() => updateInspectionItem(item.id, { status: 'pass' })} data-testid={`button-inspection-item-pass-${index}`}>Đạt</button><button type="button" className={`btn px-3 py-1.5 text-xs ${item.status === 'fail' ? 'btn-danger' : 'btn-quiet'}`} onClick={() => updateInspectionItem(item.id, { status: 'fail' })} data-testid={`button-inspection-item-fail-${index}`}>Không đạt</button><button type="button" className={`btn px-3 py-1.5 text-xs ${item.status === 'na' ? 'btn-primary' : 'btn-quiet'}`} onClick={() => updateInspectionItem(item.id, { status: 'na' })} data-testid={`button-inspection-item-na-${index}`}>Chưa đánh giá</button></div>
        </div>)}</div>
-       <div className="rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4"><div className="flex items-center gap-2 text-xs font-semibold"><Link2 size={14} className="text-primary"/> Bước 3 · Thông tin để tra cứu</div><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Các trường dưới đây đều không bắt buộc. Chọn trực tiếp thông tin có liên quan đến biên bản.</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{Object.entries(recordLinkTypeLabels).filter(([type]) => type !== 'area').map(([type, label]) => { const linkType = type as RecordLinkType; const link = relatedLinks.find(item => item.type === linkType) || { id: `new-${linkType}`, type: linkType, value: '' }; const options = getLinkOptions(linkType); const canUseSelect = options.length > 0 && (!link.value || options.includes(link.value)); return <label className="text-xs font-semibold" key={linkType}>{label} <span className="font-normal text-muted-foreground">(không bắt buộc)</span>{canUseSelect ? <select className="field mt-1.5 py-2 text-xs font-normal" value={link.value} onChange={event => updateRelatedLinkValue(linkType, event.target.value)} data-testid={`select-record-link-${linkType}`}><option value="">Chọn {label.toLowerCase()}</option>{options.map(option => <option value={option} key={option}>{option}</option>)}</select> : <input className="field mt-1.5 py-2 text-xs font-normal" value={link.value} onChange={event => updateRelatedLinkValue(linkType, event.target.value)} placeholder={`Nhập ${label.toLowerCase()}`} data-testid={`input-record-link-${linkType}`}/>}</label>; })}</div></div>
+       <RecordLinkInspectionFields links={relatedLinks} getOptions={getLinkOptions} onChange={updateRelatedLink} />
     </div>
      <div className="mt-6 border-t border-border pt-5"><p className="section-label">Bước 4 · Kết luận và khắc phục</p><p className="mt-1 text-xs text-muted-foreground">Hoàn thiện kết luận, minh chứng và việc cần nhà trường xử lý.</p></div>
      <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-2">
@@ -1028,11 +1090,12 @@ function RemediationPage({ remediations, setRemediations, notify }: { remediatio
 
 function SopWorkflowGuide() {
   const steps = [
-    { icon: Bell, title: 'Kích hoạt cảnh báo khẩn cấp', text: 'Khi có ca nghi ngờ từ y tế học đường, gửi thông báo ngay đến Trạm Y tế và Lãnh đạo UBND Phường.', tone: 'red' },
-    { icon: MapPin, title: 'Khoanh vùng & truy vết', text: 'Truy xuất món ăn, đơn vị cung cấp nguyên liệu và mã lô trong vài phút để phục vụ niêm phong, lấy mẫu nghiệm thu.', tone: 'amber' },
-    { icon: RefreshCw, title: 'Theo dõi khắc phục', text: 'Theo dõi tiến độ khắc phục lỗi của nhà trường sau khi bị nhắc nhở hoặc xử phạt hành chính.', tone: 'teal' },
+    { icon: ClipboardCheck, title: 'Tiếp nhận cảnh báo', text: 'Ghi nhận ca nghi ngờ từ y tế học đường hoặc dấu hiệu sự cố được đánh dấu trong biên bản kiểm tra.', tone: 'blue' },
+    { icon: Bell, title: 'Kích hoạt & thông báo khẩn', text: 'Gửi thông báo đến Trạm Y tế, Lãnh đạo UBND Xã/Phường, cán bộ ATTP và các đơn vị được phân công.', tone: 'red' },
+    { icon: MapPin, title: 'Khoanh vùng sự cố', text: 'Tạm dừng phục vụ, niêm phong thực phẩm nghi ngờ và ghi nhận trạng thái lấy mẫu nghiệm thu.', tone: 'amber' },
+    { icon: Link2, title: 'Truy xuất nguồn gốc', text: 'Truy xuất nhanh theo chuỗi bữa ăn → món ăn → nguyên liệu → lô thực phẩm → nhà cung cấp.', tone: 'teal' },
   ];
-  return <div className="mb-5 grid gap-3 lg:grid-cols-3" data-testid="section-sop-workflow">
+  return <div className="mb-5 grid gap-3 lg:grid-cols-4" data-testid="section-sop-workflow">
     {steps.map(step => {
       const Icon = step.icon;
       const toneClass = step.tone === 'red' ? 'bg-[hsl(2_69%_54%/.12)] text-destructive' : step.tone === 'amber' ? 'bg-[hsl(36_92%_57%/.18)] text-[hsl(30_75%_31%)]' : 'bg-[hsl(174_58%_34%/.12)] text-primary';
@@ -1051,12 +1114,108 @@ function AlertsPage({ alerts, setAlerts, notify }: { alerts: Alert[]; setAlerts:
   return <div className="mx-auto max-w-[1440px] animate-rise"><PageTitle eyebrow="Ứng phó · Khẩn cấp" title="SOP Alert" description="Tiếp nhận cảnh báo từ biên bản kiểm tra, khoanh vùng truy vết và theo dõi tiến độ khắc phục sau nhắc nhở hoặc xử phạt hành chính." /><SopWorkflowGuide /><div className="mb-5 rounded-xl border border-[hsl(2_69%_54%/.25)] bg-[hsl(2_69%_54%/.06)] p-4"><div className="flex gap-3"><div className="rounded-lg bg-[hsl(2_69%_54%/.12)] p-2 text-destructive"><AlertTriangle size={19}/></div><div><div className="text-sm font-semibold">Cảnh báo được tạo từ biên bản kiểm tra</div><div className="mt-1 text-xs text-muted-foreground">Khi phát hiện dấu hiệu nghi ngờ, đánh dấu sự cố ở cuối biên bản và bấm Cảnh báo ngộ độc. Hệ thống sẽ gửi thông báo khẩn đến Trạm Y tế và Lãnh đạo UBND Phường.</div></div></div></div><div className="grid gap-5 xl:grid-cols-[1fr_.72fr]"><Panel><div className="flex items-center justify-between border-b border-border px-5 py-4"><div><p className="section-label">Hồ sơ sự cố</p><h2 className="mt-1 font-semibold">Các cảnh báo đang theo dõi</h2></div><Badge tone="red">{alerts.filter(a=>a.status!=='closed').length} đang mở</Badge></div><div className="divide-y divide-border">{alerts.map(a=><button key={a.id} className={`flex w-full items-start gap-4 px-5 py-5 text-left transition-colors hover:bg-muted/35 ${selected?.id===a.id?'bg-[hsl(2_69%_54%/.05)]':''}`} onClick={()=>setSelected(a)} data-testid={`button-select-alert-${a.id}`}><div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(2_69%_54%/.12)] text-destructive"><ShieldAlert size={17}/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">{a.school}</span><Badge tone={statusTone(a.status)}>{statusLabel(a.status)}</Badge></div><div className="mt-1.5 text-xs text-muted-foreground">{a.symptoms}</div><div className="mt-2 flex flex-wrap gap-3 text-[10px] text-muted-foreground"><span>{a.cases} trường hợp nghi ngờ</span><span>Khởi phát {new Date(a.onset).toLocaleString('vi-VN')}</span></div></div><ChevronRight size={16} className="mt-2 shrink-0 text-muted-foreground"/></button>)}{alerts.length===0&&<EmptyState title="Chưa có cảnh báo" description="Hồ sơ sự cố sẽ xuất hiện sau khi được tạo từ một biên bản kiểm tra."/>}</div></Panel>{selected?<AlertDetail alert={selected} onCycle={()=>cycle(selected)} />:<Panel><EmptyState title="Chưa có hồ sơ sự cố" description="Hoàn tất biên bản kiểm tra và đánh dấu có sự cố để mở hồ sơ SOP Alert." /></Panel>}</div></div>;
 }
 
+function AlertManagementPage({ alerts, setAlerts, notify }: { alerts: Alert[]; setAlerts: (v: Alert[]) => void; notify: (s: string) => void }) {
+  const [selected, setSelected] = useState<Alert | null>(alerts[0] || null);
+  const [showIntake, setShowIntake] = useState(false);
+  const [form, setForm] = useState<Partial<Alert>>({ school: schools[0], onset: '2025-09-19T11:30', cases: 1, symptoms: '', food: '', ingredient: '', batch: '', supplier: '', containment: '', traceability: '' });
+  const persist = (next: Alert[]) => { setAlerts(next); save('attp-alerts', next); };
+  const update = (id: string, patch: Partial<Alert>, message: string) => {
+    const next = alerts.map(item => item.id === id ? { ...item, ...patch } : item);
+    persist(next);
+    setSelected(current => current?.id === id ? { ...current, ...patch } : current);
+    notify(message);
+  };
+  const activate = (alert: Alert) => update(alert.id, { status: 'investigating', notificationStatus: 'sent', notified: 'Đã gửi: Trạm Y tế; Lãnh đạo UBND Xã/Phường; Cán bộ phụ trách ATTP; Đơn vị được phân công' }, 'Đã kích hoạt cảnh báo và ghi nhận thông báo khẩn');
+  const containmentStep = (alert: Alert) => {
+    const next = alert.containmentStatus === 'pending' || !alert.containmentStatus ? 'sealed' : 'sampled';
+    const text = next === 'sealed' ? 'Đã tạm dừng phục vụ và niêm phong thực phẩm nghi ngờ.' : `${alert.containment || ''} Đã lấy mẫu nghiệm thu và lưu hồ sơ.`;
+    update(alert.id, { containmentStatus: next, containment: text, status: next === 'sampled' ? 'contained' : 'investigating' }, next === 'sealed' ? 'Đã ghi nhận khoanh vùng và niêm phong' : 'Đã ghi nhận lấy mẫu nghiệm thu');
+  };
+  const add = () => {
+    if (!form.school || !form.symptoms?.trim()) return;
+    const item: Alert = { id: uid('a'), school: form.school, onset: form.onset || '2025-09-19T11:30', cases: Number(form.cases) || 1, symptoms: form.symptoms.trim(), food: form.food || '', ingredient: form.ingredient || '', supplier: form.supplier || '', batch: form.batch || '', status: 'new', notificationStatus: 'pending', notified: 'Chưa gửi thông báo khẩn', containment: form.containment || 'Chưa khoanh vùng', containmentStatus: 'pending', traceability: form.traceability || 'Chưa truy xuất' };
+    persist([item, ...alerts]); setSelected(item); setShowIntake(false); setForm({ school: schools[0], onset: '2025-09-19T11:30', cases: 1, symptoms: '', food: '', ingredient: '', batch: '', supplier: '', containment: '', traceability: '' }); notify('Đã tiếp nhận cảnh báo sự cố ATTP');
+  };
+  const traceRows = selected ? [
+    ['Bữa ăn / món ăn', selected.food || 'Chưa xác định'],
+    ['Nguyên liệu', selected.ingredient || 'Chưa xác định'],
+    ['Lô thực phẩm', selected.batch || 'Chưa xác định'],
+    ['Nhà cung cấp', selected.supplier || 'Chưa xác định'],
+  ] : [];
+  return <div className="mx-auto max-w-[1440px] animate-rise">
+    <PageTitle eyebrow="SOP Alert · Sự cố ATTP" title="Ứng phó sự cố ngộ độc thực phẩm" description="Tiếp nhận cảnh báo, gửi thông báo khẩn, khoanh vùng và truy xuất nguồn gốc trong vài phút." action={<button className="btn btn-danger" onClick={() => setShowIntake(true)} data-testid="button-intake-alert"><Bell size={15}/> Tiếp nhận cảnh báo</button>} />
+    <SopWorkflowGuide />
+    <div className="grid gap-5 xl:grid-cols-[1fr_.86fr]">
+      <Panel><div className="flex items-center justify-between border-b border-border px-5 py-4"><div><p className="section-label">Tiếp nhận & theo dõi</p><h2 className="mt-1 font-semibold">Danh sách cảnh báo sự cố</h2></div><Badge tone="red">{alerts.filter(alert => alert.status !== 'closed').length} đang mở</Badge></div><div className="divide-y divide-border">{alerts.map(alert => <button key={alert.id} className={`flex w-full items-start gap-4 px-5 py-5 text-left transition-colors hover:bg-muted/35 ${selected?.id === alert.id ? 'bg-[hsl(2_69%_54%/.05)]' : ''}`} onClick={() => setSelected(alert)} data-testid={`button-select-alert-${alert.id}`}><div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(2_69%_54%/.12)] text-destructive"><ShieldAlert size={17}/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">{alert.school}</span><Badge tone={statusTone(alert.status)}>{statusLabel(alert.status)}</Badge>{alert.notificationStatus === 'sent' && <Badge tone="teal">Đã thông báo</Badge>}</div><div className="mt-1.5 text-xs text-muted-foreground">{alert.symptoms}</div><div className="mt-2 flex flex-wrap gap-3 text-[10px] text-muted-foreground"><span>{alert.cases} ca nghi ngờ</span><span>{new Date(alert.onset).toLocaleString('vi-VN')}</span></div></div><ChevronRight size={16} className="mt-2 shrink-0 text-muted-foreground"/></button>)}{alerts.length === 0 && <EmptyState title="Chưa có cảnh báo" description="Có thể tiếp nhận cảnh báo từ y tế học đường hoặc từ biên bản kiểm tra."/>}</div></Panel>
+      {selected ? <Panel className="h-fit"><div className="border-b border-border px-5 py-4"><div className="flex items-start justify-between gap-3"><div><p className="section-label">Hồ sơ sự cố</p><h2 className="mt-1 font-semibold">{selected.school}</h2></div><Badge tone={statusTone(selected.status)}>{statusLabel(selected.status)}</Badge></div><div className="mt-2 text-xs text-muted-foreground">Mã {selected.id.toUpperCase()} · Khởi phát {new Date(selected.onset).toLocaleString('vi-VN')}</div></div><div className="space-y-5 px-5 py-5 text-xs">
+        <div className="rounded-xl border border-[hsl(2_69%_54%/.25)] bg-[hsl(2_69%_54%/.06)] p-3"><div className="flex items-center gap-2 font-semibold text-[hsl(2_65%_40%)]"><Bell size={15}/> Kích hoạt cảnh báo khẩn</div><p className="mt-1 leading-relaxed text-muted-foreground">Thông báo đến Trạm Y tế, Lãnh đạo UBND Xã/Phường, cán bộ phụ trách ATTP và các đơn vị liên quan.</p><button className="btn btn-danger mt-3 w-full" onClick={() => activate(selected)} disabled={selected.notificationStatus === 'sent'} data-testid="button-activate-alert">{selected.notificationStatus === 'sent' ? 'Đã gửi thông báo khẩn' : 'Kích hoạt & gửi thông báo'}</button><div className="mt-2 text-[10px] text-muted-foreground">{selected.notified || 'Chưa gửi thông báo'}</div></div>
+        <div className="grid gap-3 sm:grid-cols-2"><Detail label="Trường hợp nghi ngờ" value={`${selected.cases} người`}/><Detail label="Triệu chứng" value={selected.symptoms}/></div>
+        <div><div className="mb-2 flex items-center justify-between"><div className="font-semibold">Khoanh vùng & lấy mẫu</div><Badge tone={selected.containmentStatus === 'sampled' ? 'teal' : selected.containmentStatus === 'sealed' ? 'amber' : 'neutral'}>{selected.containmentStatus === 'sampled' ? 'Đã lấy mẫu' : selected.containmentStatus === 'sealed' ? 'Đã niêm phong' : 'Chưa thực hiện'}</Badge></div><div className="rounded-lg bg-muted/60 p-3 leading-relaxed text-muted-foreground">{selected.containment || 'Chưa có biện pháp khoanh vùng.'}</div><button className="btn btn-quiet mt-2 w-full" onClick={() => containmentStep(selected)} disabled={selected.containmentStatus === 'sampled'} data-testid="button-contain-alert"><MapPin size={14}/> {selected.containmentStatus === 'sealed' ? 'Ghi nhận đã lấy mẫu nghiệm thu' : 'Khoanh vùng & niêm phong'}</button></div>
+        <div><div className="mb-2 flex items-center gap-2 font-semibold"><Link2 size={14} className="text-primary"/> Truy xuất nguồn gốc</div><div className="grid gap-2 sm:grid-cols-2">{traceRows.map(([label, value]) => <div className="rounded-lg border border-border bg-card p-3" key={label}><div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div><div className="mt-1 font-medium">{value}</div></div>)}</div><div className="mt-3 rounded-lg bg-muted/60 p-3 leading-relaxed text-muted-foreground">{selected.traceability || 'Chưa có nhật ký truy xuất.'}</div></div>
+      </div></Panel> : <Panel><EmptyState title="Chưa có hồ sơ sự cố" description="Tiếp nhận cảnh báo để bắt đầu quy trình SOP Alert." /></Panel>}
+    </div>
+    {showIntake && <Modal title="Tiếp nhận cảnh báo sự cố ATTP" onClose={() => setShowIntake(false)} wide><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-semibold">Trường / cơ sở<select className="field mt-1.5" value={form.school} onChange={event => setForm({ ...form, school: event.target.value })} data-testid="select-alert-school">{schools.map(school => <option key={school}>{school}</option>)}</select></label><label className="text-xs font-semibold">Thời điểm khởi phát<input className="field mt-1.5" type="datetime-local" value={form.onset} onChange={event => setForm({ ...form, onset: event.target.value })} data-testid="input-alert-onset"/></label><label className="text-xs font-semibold">Số ca nghi ngờ<input className="field mt-1.5" type="number" min="1" value={form.cases} onChange={event => setForm({ ...form, cases: Number(event.target.value) })} data-testid="input-alert-cases"/></label><label className="text-xs font-semibold">Triệu chứng<input className="field mt-1.5" value={form.symptoms} onChange={event => setForm({ ...form, symptoms: event.target.value })} data-testid="input-alert-symptoms"/></label><label className="text-xs font-semibold">Món ăn / bữa ăn<input className="field mt-1.5" value={form.food} onChange={event => setForm({ ...form, food: event.target.value })} data-testid="input-alert-food"/></label><label className="text-xs font-semibold">Nguyên liệu<input className="field mt-1.5" value={form.ingredient} onChange={event => setForm({ ...form, ingredient: event.target.value })} data-testid="input-alert-ingredient"/></label><label className="text-xs font-semibold">Lô thực phẩm<input className="field mt-1.5" value={form.batch} onChange={event => setForm({ ...form, batch: event.target.value })} data-testid="input-alert-batch"/></label><label className="text-xs font-semibold">Nhà cung cấp<input className="field mt-1.5" value={form.supplier} onChange={event => setForm({ ...form, supplier: event.target.value })} data-testid="input-alert-supplier"/></label><label className="text-xs font-semibold sm:col-span-2">Ghi chú khoanh vùng<textarea className="field mt-1.5 min-h-20" value={form.containment} onChange={event => setForm({ ...form, containment: event.target.value })} data-testid="textarea-alert-containment"/></label></div><ModalActions onClose={() => setShowIntake(false)} onSubmit={add} label="Tiếp nhận cảnh báo"/></Modal>}
+  </div>;
+}
+
 function AlertDetail({ alert, onCycle }: { alert: Alert; onCycle:()=>void }) {
   return <Panel className="h-fit"><div className="border-b border-border px-5 py-4"><div className="flex items-start justify-between gap-3"><div><p className="section-label">Chi tiết hồ sơ</p><h2 className="mt-1 font-semibold">{alert.school}</h2></div><Badge tone={statusTone(alert.status)}>{statusLabel(alert.status)}</Badge></div><div className="mt-2 text-xs text-muted-foreground">Mã {alert.id.toUpperCase()} · Khởi phát {new Date(alert.onset).toLocaleString('vi-VN')}</div></div><div className="space-y-4 px-5 py-5 text-xs"><Detail label="Trường hợp nghi ngờ" value={`${alert.cases} người`}/><Detail label="Triệu chứng" value={alert.symptoms}/><Detail label="Thực phẩm / món ăn" value={alert.food||'Chưa xác định'}/><Detail label="Nhà cung cấp · mã lô" value={`${alert.supplier||'Chưa xác định'} · ${alert.batch||'—'}`}/><Detail label="Bên đã thông báo" value={alert.notified||'Chưa cập nhật'}/><div><div className="mb-1 font-semibold">Biện pháp khoanh vùng</div><div className="rounded-lg bg-muted/60 p-3 leading-relaxed text-muted-foreground">{alert.containment||'Chưa cập nhật'}</div></div><div><div className="mb-1 font-semibold">Truy xuất & nhật ký</div><div className="rounded-lg bg-muted/60 p-3 leading-relaxed text-muted-foreground">{alert.traceability||'Chưa cập nhật'}</div></div><button className="btn btn-primary w-full" onClick={onCycle} data-testid="button-cycle-alert-status"><RefreshCw size={14}/> Chuyển bước: {alert.status==='new'?'Đang điều tra':alert.status==='investigating'?'Đã khoanh vùng':alert.status==='contained'?'Đóng hồ sơ':'Mở lại hồ sơ'}</button></div></Panel>;
 }
 function RemediationTracking({ remediations, setRemediations, notify }: { remediations: Remediation[]; setRemediations: (v: Remediation[]) => void; notify: (s: string) => void }) {
   const changeStatus = (id: string) => { const next: Remediation[] = remediations.map(r => r.id === id ? { ...r, status: (r.status === 'open' ? 'progress' : r.status === 'progress' ? 'closed' : 'open') as RemediationStatus } : r); setRemediations(next); save('attp-remediations', next); notify('Đã cập nhật tiến độ khắc phục'); };
   return <Panel className="mt-5"><div className="flex flex-col justify-between gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center"><div><p className="section-label">Theo dõi sau cảnh báo</p><h2 className="mt-1 font-semibold">Tiến độ khắc phục của nhà trường</h2><p className="mt-1 text-xs text-muted-foreground">Theo dõi lỗi sau khi nhà trường bị nhắc nhở hoặc phạt hành chính.</p></div><div className="flex gap-2"><Badge tone="amber">{remediations.filter(r=>r.status==='open').length} chờ xử lý</Badge><Badge tone="blue">{remediations.filter(r=>r.status==='progress').length} đang xử lý</Badge><Badge tone="teal">{remediations.filter(r=>r.status==='closed').length} đã đóng</Badge></div></div><div className="divide-y divide-border">{remediations.map(r=><div key={r.id} className="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">{r.school}</span><Badge tone={severityTone(r.severity)}>{severityLabel(r.severity)}</Badge><Badge tone={statusTone(r.status)}>{statusLabel(r.status)}</Badge></div><div className="mt-1 text-xs leading-relaxed">{r.finding}</div><div className="mt-1 flex flex-wrap gap-3 text-[10px] text-muted-foreground"><span>Phụ trách: {r.owner}</span><span>Hạn: {formatDate(r.due)}</span>{r.log&&<span>{r.log}</span>}</div></div><button className="btn btn-quiet shrink-0 text-xs" onClick={()=>changeStatus(r.id)} data-testid={`button-alert-remediation-${r.id}`}><RefreshCw size={13}/> Chuyển bước xử lý</button></div>)}{remediations.length===0&&<EmptyState title="Chưa có trường cần khắc phục" description="Các vi phạm phát sinh sau kiểm tra sẽ được theo dõi tại đây."/>}</div></Panel>;
+}
+
+function remediationDisplayStatus(item: Remediation) {
+  if (item.verification === 'rejected') return 'Không đạt sau xác minh';
+  if (item.verification === 'approved' || item.status === 'closed') return 'Đã hoàn tất';
+  if (item.status === 'progress') return 'Đang khắc phục';
+  return 'Chưa khắc phục';
+}
+
+function RemediationManagementPage({ remediations, setRemediations, notify }: { remediations: Remediation[]; setRemediations: (v: Remediation[]) => void; notify: (s: string) => void }) {
+  const [filter, setFilter] = useState('all');
+  const [selected, setSelected] = useState<Remediation | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<Partial<Remediation>>({ school: schools[0], finding: '', severity: 'major', owner: '', due: '2025-09-25', decision: '', report: '', evidence: '' });
+  const list = remediations.filter(item => filter === 'all' || item.status === filter || (filter === 'rejected' && item.verification === 'rejected'));
+  const persist = (next: Remediation[]) => { setRemediations(next); save('attp-remediations', next); };
+  const update = (id: string, patch: Partial<Remediation>, message: string) => {
+    const next = remediations.map(item => item.id === id ? { ...item, ...patch } : item);
+    persist(next);
+    setSelected(current => current?.id === id ? { ...current, ...patch } : current);
+    notify(message);
+  };
+  const advance = (item: Remediation) => {
+    const nextStatus = item.status === 'open' ? 'progress' : item.status === 'progress' ? 'closed' : 'open';
+    update(item.id, { status: nextStatus as RemediationStatus, log: `${formatDate('2025-09-19')}: ${nextStatus === 'progress' ? 'Nhà trường bắt đầu khắc phục.' : nextStatus === 'closed' ? 'Đã chuyển sang bước xác minh hoàn tất.' : 'Mở lại yêu cầu khắc phục.'}` }, 'Đã cập nhật tiến độ khắc phục');
+  };
+  const verify = (item: Remediation, approved: boolean) => {
+    update(item.id, { verification: approved ? 'approved' : 'rejected', status: approved ? 'closed' : 'open', log: `${formatDate('2025-09-19')}: ${approved ? 'UBND Xã/Phường xác minh đạt.' : 'Xác minh chưa đạt, yêu cầu khắc phục bổ sung.'}` }, approved ? 'Đã xác minh kết quả đạt' : 'Đã ghi nhận kết quả chưa đạt');
+  };
+  const escalate = (item: Remediation) => update(item.id, { decision: 'Đã chuyển xử lý vi phạm hành chính', log: `${formatDate('2025-09-19')}: Chuyển hồ sơ sang bước xử lý vi phạm.` }, 'Đã chuyển hồ sơ xử lý vi phạm');
+  const add = () => {
+    if (!form.finding?.trim() || !form.owner?.trim()) return;
+    const item: Remediation = { id: uid('m'), school: form.school || schools[0], finding: form.finding.trim(), severity: form.severity as Severity || 'major', owner: form.owner.trim(), due: form.due || '', status: 'open', log: 'Đã lập kiến nghị từ biên bản kiểm tra.', decision: form.decision || '', report: form.report || '', evidence: form.evidence || '', verification: 'pending' };
+    persist([item, ...remediations]); setShowCreate(false); setForm({ school: schools[0], finding: '', severity: 'major', owner: '', due: '2025-09-25', decision: '', report: '', evidence: '' }); notify('Đã tạo kiến nghị khắc phục');
+  };
+  const count = (predicate: (item: Remediation) => boolean) => remediations.filter(predicate).length;
+  return <div className="mx-auto max-w-[1440px] animate-rise">
+    <PageTitle eyebrow="Quản lý sau kiểm tra" title="Kiến nghị & xử lý vi phạm" description="Theo dõi kiến nghị, tiến độ khắc phục, báo cáo của nhà trường và kết quả xác minh sau kiểm tra." action={<button className="btn btn-primary" onClick={() => setShowCreate(true)} data-testid="button-add-remediation"><Plus size={16}/> Tạo kiến nghị</button>} />
+    <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <Panel className="p-4"><div className="text-2xl font-bold">{remediations.length}</div><div className="mt-1 text-xs text-muted-foreground">Tổng kiến nghị</div></Panel>
+      <Panel className="border-[hsl(36_92%_57%/.3)] p-4"><div className="text-2xl font-bold">{count(item => item.status === 'open')}</div><div className="mt-1 text-xs text-muted-foreground">Chưa khắc phục</div></Panel>
+      <Panel className="border-[hsl(201_70%_48%/.3)] p-4"><div className="text-2xl font-bold">{count(item => item.status === 'progress')}</div><div className="mt-1 text-xs text-muted-foreground">Đang khắc phục</div></Panel>
+      <Panel className="border-primary/30 p-4"><div className="text-2xl font-bold">{count(item => item.verification === 'approved' || item.status === 'closed')}</div><div className="mt-1 text-xs text-muted-foreground">Đã hoàn tất</div></Panel>
+      <Panel className="border-[hsl(2_69%_54%/.3)] p-4"><div className="text-2xl font-bold">{count(item => item.verification === 'rejected')}</div><div className="mt-1 text-xs text-muted-foreground">Không đạt xác minh</div></Panel>
+    </div>
+    <Panel>
+      <div className="flex flex-col justify-between gap-3 border-b border-border px-5 py-4 lg:flex-row lg:items-center"><div><p className="section-label">Quy trình khắc phục</p><h2 className="mt-1 font-semibold">Danh sách kiến nghị liên kết với biên bản</h2></div><div className="flex flex-wrap gap-2">{[['all', 'Tất cả'], ['open', 'Chưa khắc phục'], ['progress', 'Đang khắc phục'], ['rejected', 'Không đạt xác minh'], ['closed', 'Đã hoàn tất']].map(([value, label]) => <button key={value} className={`btn px-3 py-1.5 text-xs ${filter === value ? 'btn-primary' : 'btn-quiet'}`} onClick={() => setFilter(value)} data-testid={`button-remediation-filter-${value}`}>{label}</button>)}</div></div>
+      <div className="divide-y divide-border">{list.map(item => <div className="px-5 py-4" key={item.id} data-testid={`row-remediation-${item.id}`}><div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">{item.school}</span><Badge tone={severityTone(item.severity)}>{severityLabel(item.severity)}</Badge><Badge tone={item.verification === 'rejected' ? 'red' : item.status === 'closed' ? 'teal' : item.status === 'progress' ? 'blue' : 'amber'}>{remediationDisplayStatus(item)}</Badge></div><p className="mt-2 text-sm leading-relaxed">{item.finding}</p><div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground"><span>Phụ trách: {item.owner}</span><span>Hạn: {formatDate(item.due)}</span><span>{item.decision || 'Chưa xử lý vi phạm'}</span></div>{item.log && <div className="mt-2 rounded-lg bg-muted/55 px-3 py-2 text-[11px] text-muted-foreground">{item.log}</div>}</div><div className="flex shrink-0 flex-wrap gap-2"><button className="btn btn-quiet text-xs" onClick={() => setSelected(item)} data-testid={`button-open-remediation-${item.id}`}><Eye size={14}/> Chi tiết</button><button className="btn btn-quiet text-xs" onClick={() => advance(item)} data-testid={`button-advance-remediation-${item.id}`}><RefreshCw size={14}/> Cập nhật tiến độ</button></div></div></div>)}{list.length === 0 && <EmptyState title="Không có kiến nghị trong nhóm này" description="Các kiến nghị mới sẽ xuất hiện sau khi hoàn tất biên bản kiểm tra."/>}</div>
+    </Panel>
+    {selected && <Modal title={`Theo dõi kiến nghị · ${selected.school}`} onClose={() => setSelected(null)} wide><div className="space-y-5"><div className="rounded-xl border border-primary/20 bg-secondary/35 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="section-label">Nội dung cần khắc phục</p><h3 className="mt-1 font-semibold">{selected.finding}</h3></div><Badge tone={selected.verification === 'rejected' ? 'red' : selected.status === 'closed' ? 'teal' : 'blue'}>{remediationDisplayStatus(selected)}</Badge></div><div className="mt-3 grid gap-3 sm:grid-cols-3"><Detail label="Mức độ" value={severityLabel(selected.severity)}/><Detail label="Phụ trách" value={selected.owner}/><Detail label="Hạn xử lý" value={formatDate(selected.due)}/></div></div><label className="block text-xs font-semibold">Báo cáo kết quả khắc phục<textarea className="field mt-1.5 min-h-24" value={selected.report || ''} onChange={event => setSelected({ ...selected, report: event.target.value })} placeholder="Nhà trường nhập kết quả đã thực hiện..." data-testid="textarea-remediation-report"/></label><label className="block text-xs font-semibold">Ảnh/tệp minh chứng<input className="field mt-1.5" value={selected.evidence || ''} onChange={event => setSelected({ ...selected, evidence: event.target.value })} placeholder="Tên ảnh, biên bản hoặc tài liệu đính kèm" data-testid="input-remediation-evidence"/></label><div className="flex flex-wrap gap-2"><button className="btn btn-primary" onClick={() => update(selected.id, { report: selected.report || '', evidence: selected.evidence || '' }, 'Đã lưu báo cáo khắc phục')} data-testid="button-save-remediation-report"><Save size={14}/> Lưu báo cáo</button><button className="btn btn-quiet" onClick={() => verify(selected, true)} data-testid="button-verify-remediation-pass"><CheckCircle2 size={14}/> Xác minh đạt</button><button className="btn btn-danger" onClick={() => verify(selected, false)} data-testid="button-verify-remediation-fail"><AlertTriangle size={14}/> Không đạt sau xác minh</button><button className="btn btn-quiet" onClick={() => escalate(selected)} data-testid="button-escalate-remediation"><ShieldAlert size={14}/> Xử lý vi phạm</button></div><div className="rounded-lg bg-muted/55 p-3 text-xs text-muted-foreground"><strong className="text-foreground">Nhật ký:</strong> {selected.log || 'Chưa có nhật ký xử lý.'}</div></div></Modal>}
+    {showCreate && <Modal title="Tạo kiến nghị khắc phục" onClose={() => setShowCreate(false)}><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-semibold sm:col-span-2">Trường / cơ sở<select className="field mt-1.5" value={form.school} onChange={event => setForm({ ...form, school: event.target.value })} data-testid="select-remediation-school">{schools.map(school => <option key={school}>{school}</option>)}</select></label><label className="text-xs font-semibold sm:col-span-2">Nội dung phát hiện<textarea className="field mt-1.5 min-h-24" value={form.finding} onChange={event => setForm({ ...form, finding: event.target.value })} data-testid="textarea-remediation-finding"/></label><label className="text-xs font-semibold">Mức độ<select className="field mt-1.5" value={form.severity} onChange={event => setForm({ ...form, severity: event.target.value as Severity })} data-testid="select-remediation-severity"><option value="critical">Nghiêm trọng</option><option value="major">Quan trọng</option><option value="minor">Nhẹ</option></select></label><label className="text-xs font-semibold">Hạn khắc phục<input className="field mt-1.5" type="date" value={form.due} onChange={event => setForm({ ...form, due: event.target.value })} data-testid="input-remediation-due"/></label><label className="text-xs font-semibold">Đơn vị / người phụ trách<input className="field mt-1.5" value={form.owner} onChange={event => setForm({ ...form, owner: event.target.value })} data-testid="input-remediation-owner"/></label><label className="text-xs font-semibold">Quyết định xử lý<input className="field mt-1.5" value={form.decision} onChange={event => setForm({ ...form, decision: event.target.value })} data-testid="input-remediation-decision"/></label></div><ModalActions onClose={() => setShowCreate(false)} onSubmit={add} label="Tạo kiến nghị"/></Modal>}
+  </div>;
 }
 function Detail({label,value}:{label:string;value:string}) { return <div><div className="mb-1 font-semibold">{label}</div><div className="text-muted-foreground">{value}</div></div>; }
 
@@ -1065,20 +1224,21 @@ function NotFound() { return <div className="flex min-h-[60dvh] items-center jus
 function AppContent() {
   const [location] = useLocation(); const [toast,setToast]=useState(''); const notify=(s:string)=>setToast(s);
   const [inspections,setInspections]=useState(()=>load<Inspection[]>('attp-inspections',seedInspections)); const [records,setRecords]=useState(()=>load<InspectionRecord[]>('attp-records',seedRecords)); const [remediations,setRemediations]=useState(()=>load<Remediation[]>('attp-remediations',seedRemediations)); const [alerts,setAlerts]=useState(()=>load<Alert[]>('attp-alerts',seedAlerts));
-  const createAlertFromRecord = (record: InspectionRecord) => { const item: Alert = { id: uid('a'), school: record.school, onset: `${record.date}T08:00`, cases: 1, symptoms: record.findings || 'Nghi ngờ ngộ độc thực phẩm tại cơ sở', food: 'Chưa xác định', supplier: '', batch: '', status: 'new', notified: 'Trạm Y tế xã; UBND phường', containment: 'Tạm dừng phục vụ món ăn nghi ngờ và bảo quản mẫu lưu.', traceability: record.recommendation || 'Đã tiếp nhận hồ sơ từ biên bản kiểm tra.' }; const nextAlerts = [item, ...alerts]; setAlerts(nextAlerts); save('attp-alerts', nextAlerts); const remediation: Remediation = { id: uid('m'), school: record.school, finding: record.findings || 'Làm rõ nguy cơ mất an toàn thực phẩm và thực hiện khắc phục.', severity: 'critical', owner: 'Nhà trường / cán bộ phụ trách', due: record.date, status: 'open', log: 'Tạo cùng lúc với hồ sơ Cảnh báo ngộ độc (SOP Alert).', decision: 'Theo dõi khắc phục' }; const nextRemediations = [remediation, ...remediations]; setRemediations(nextRemediations); save('attp-remediations', nextRemediations); notify('Đã lưu biên bản và kích hoạt Cảnh báo ngộ độc (SOP Alert)'); };
+  const createAlertFromRecord = (record: InspectionRecord) => { const item: Alert = { id: uid('a'), school: record.school, onset: `${record.date}T08:00`, cases: 1, symptoms: record.findings || 'Nghi ngờ ngộ độc thực phẩm tại cơ sở', food: recordLinkValue(record, 'meal') || 'Chưa xác định', ingredient: recordLinkValue(record, 'ingredient') || 'Chưa xác định', supplier: recordLinkValue(record, 'supplier') || 'Chưa xác định', batch: recordLinkValue(record, 'batch') || 'Chưa xác định', status: 'new', notificationStatus: 'pending', notified: 'Chưa gửi thông báo khẩn', containment: 'Tạm dừng phục vụ món ăn nghi ngờ và bảo quản mẫu lưu.', containmentStatus: 'pending', traceability: record.recommendation || 'Đã tiếp nhận hồ sơ từ biên bản kiểm tra.', sourceRecordId: record.id }; const nextAlerts = [item, ...alerts]; setAlerts(nextAlerts); save('attp-alerts', nextAlerts); const remediation: Remediation = { id: uid('m'), school: record.school, finding: record.findings || 'Làm rõ nguy cơ mất an toàn thực phẩm và thực hiện khắc phục.', severity: 'critical', owner: 'Nhà trường / cán bộ phụ trách', due: record.date, status: 'open', log: 'Tạo cùng lúc với hồ sơ Cảnh báo ngộ độc (SOP Alert).', decision: 'Theo dõi khắc phục', verification: 'pending' }; const nextRemediations = [remediation, ...remediations]; setRemediations(nextRemediations); save('attp-remediations', nextRemediations); notify('Đã lưu biên bản và kích hoạt Cảnh báo ngộ độc (SOP Alert)'); };
   useEffect(()=>{document.title='iSchool F&B · Điều hành ATTP học đường';},[]);
   let page:React.ReactNode;
   if(location==='/') page=<Dashboard inspections={inspections} records={records} remediations={remediations} alerts={alerts}/>;
   else if(location==='/schedule') page=<Schedule inspections={inspections} setInspections={setInspections} notify={notify}/>;
   else if(location==='/records'||location==='/records/new') page=<Records records={records} inspections={inspections} setRecords={setRecords} setInspections={setInspections} notify={notify} onAlert={createAlertFromRecord}/>;
   else if(location==='/criteria') page=<CriteriaManagement notify={notify}/>;
-  else if(location==='/alerts') page=<><AlertsPage alerts={alerts} setAlerts={setAlerts} notify={notify}/><RemediationTracking remediations={remediations} setRemediations={setRemediations} notify={notify}/></>;
+  else if(location==='/remediations') page=<RemediationManagementPage remediations={remediations} setRemediations={setRemediations} notify={notify}/>;
+  else if(location==='/alerts') page=<><AlertManagementPage alerts={alerts} setAlerts={setAlerts} notify={notify}/><RemediationTracking remediations={remediations} setRemediations={setRemediations} notify={notify}/></>;
   else page=<NotFound/>;
   return <Shell>{page}{toast&&<Toast message={toast} onClose={()=>setToast('')}/>}<EvidencePickerBridge /></Shell>;
 }
 
 function Router() {
-  return <Switch><Route path="/"><AppContent/></Route><Route path="/schedule"><AppContent/></Route><Route path="/records"><AppContent/></Route><Route path="/records/new"><AppContent/></Route><Route path="/criteria"><AppContent/></Route><Route path="/alerts"><AppContent/></Route><Route><Shell><NotFound/></Shell></Route></Switch>;
+  return <Switch><Route path="/"><AppContent/></Route><Route path="/schedule"><AppContent/></Route><Route path="/records"><AppContent/></Route><Route path="/records/new"><AppContent/></Route><Route path="/criteria"><AppContent/></Route><Route path="/remediations"><AppContent/></Route><Route path="/alerts"><AppContent/></Route><Route><Shell><NotFound/></Shell></Route></Switch>;
 }
 
 export default function App() {

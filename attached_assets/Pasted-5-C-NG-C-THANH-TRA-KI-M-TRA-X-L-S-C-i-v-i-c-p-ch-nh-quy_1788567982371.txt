@@ -1,0 +1,505 @@
+5. CÔNG CỤ THANH TRA, KIỂM TRA & XỬ LÝ SỰ CỐ
+
+Đối với cấp chính quyền địa phương (Xã/Phường), công tác quản lý An toàn Thực phẩm (ATTP) học đường không chỉ dừng ở việc thực hiện các đợt kiểm tra định kỳ mà cần đảm bảo khả năng giám sát liên tục, phát hiện sớm nguy cơ, theo dõi quá trình khắc phục và xử lý kịp thời khi xảy ra sự cố.
+
+Giải pháp iSchool F&B cung cấp bộ công cụ hỗ trợ UBND Xã/Phường và Trạm Y tế trong việc lập kế hoạch kiểm tra, ghi nhận hiện trường bằng biên bản điện tử, theo dõi vi phạm, quản lý kiến nghị khắc phục và kích hoạt quy trình ứng phó sự cố ATTP khi cần thiết.
+
+Hệ thống được thiết kế theo nguyên tắc:
+
+Người kiểm tra có thể ghi nhận bất kỳ vấn đề nào phát hiện tại hiện trường mà không bị giới hạn bởi danh sách tiêu chí kiểm tra cố định.
+
+Đồng thời, đối với các ghi nhận liên quan đến chuỗi thực phẩm, người dùng có thể liên kết trực tiếp với dữ liệu vận hành của nhà trường như bữa ăn, món ăn, nguyên liệu, lô thực phẩm hoặc nhà cung cấp để phục vụ công tác truy xuất nguồn gốc khi xảy ra sự cố.
+
+5.1. Kế hoạch & Lịch sử kiểm tra
+Mục tiêu
+
+Hỗ trợ UBND Xã/Phường chủ động tổ chức và quản lý các hoạt động thanh tra, kiểm tra ATTP tại các trường học trên địa bàn.
+
+Hệ thống cho phép cán bộ quản lý lập kế hoạch kiểm tra định kỳ hoặc kiểm tra đột xuất, phân công cán bộ thực hiện và theo dõi lịch sử kiểm tra của từng đơn vị.
+
+Chức năng chính
+Lập kế hoạch kiểm tra
+
+Người dùng có thể tạo kế hoạch kiểm tra với các thông tin:
+
+Tên đợt kiểm tra.
+Loại kiểm tra: Định kỳ / Đột xuất.
+Thời gian dự kiến kiểm tra.
+Danh sách trường hoặc đơn vị được kiểm tra.
+Đoàn hoặc cán bộ thực hiện kiểm tra.
+Nội dung kiểm tra.
+Ghi chú hoặc yêu cầu đặc biệt.
+
+Sau khi kế hoạch được tạo, hệ thống hỗ trợ theo dõi trạng thái:
+
+Chưa thực hiện.
+Đang thực hiện.
+Đã hoàn thành.
+Hoãn / Hủy.
+Lịch sử kiểm tra
+
+Hệ thống lưu trữ toàn bộ lịch sử kiểm tra theo từng trường, bao gồm:
+
+Thời gian kiểm tra.
+Đơn vị kiểm tra.
+Cán bộ/đoàn kiểm tra.
+Kết quả kiểm tra.
+Các ghi nhận, vi phạm phát hiện.
+Kiến nghị khắc phục.
+Tình trạng xử lý sau kiểm tra.
+
+Thông qua lịch sử kiểm tra, UBND Xã/Phường có thể đánh giá tình trạng tuân thủ ATTP của từng trường và phát hiện các trường hợp vi phạm lặp lại hoặc kéo dài.
+
+5.2. Biên bản kiểm tra điện tử
+Mục tiêu
+
+Thay thế hình thức lập biên bản thủ công bằng biên bản điện tử có thể nhập trực tiếp trên ứng dụng trong quá trình kiểm tra tại hiện trường.
+
+Biên bản được thiết kế linh hoạt, cho phép người kiểm tra ghi nhận các vấn đề thực tế phát hiện được mà không bắt buộc phải thực hiện theo một danh sách tiêu chí cố định.
+
+Điều này phù hợp với thực tế hoạt động thanh tra, kiểm tra bởi mỗi đợt kiểm tra có thể phát sinh các nội dung khác nhau, ví dụ:
+
+Kiểm tra khu vực bếp.
+Điều kiện vệ sinh.
+Khu vực sơ chế.
+Kho bảo quản.
+Dụng cụ chế biến.
+Nhân sự chế biến.
+Món ăn.
+Nguyên liệu.
+Lô thực phẩm.
+Nhà cung cấp.
+Các vấn đề phát sinh khác.
+5.2.1. Thông tin chung của biên bản
+
+Khi bắt đầu kiểm tra, hệ thống hiển thị hoặc cho phép nhập các thông tin chung:
+
+Tên trường/đơn vị được kiểm tra.
+Địa điểm kiểm tra.
+Thời gian kiểm tra.
+Loại kiểm tra.
+Đơn vị chủ trì.
+Thành viên đoàn kiểm tra.
+Đại diện đơn vị được kiểm tra.
+Nội dung hoặc phạm vi kiểm tra.
+5.2.2. Ghi nhận tại hiện trường
+
+Đây là khu vực nghiệp vụ chính của biên bản kiểm tra.
+
+Thay vì yêu cầu người kiểm tra đi qua một danh sách tiêu chí cố định, hệ thống cho phép người dùng chủ động thêm từng ghi nhận phát sinh tại hiện trường.
+
+Người kiểm tra chỉ cần chọn chức năng:
+
++ Thêm ghi nhận
+
+Mỗi ghi nhận được xem là một đơn vị thông tin độc lập.
+
+Cấu trúc của một ghi nhận
+
+Mỗi ghi nhận bao gồm các thông tin:
+
+1. Nội dung kiểm tra / Ghi nhận
+
+Người kiểm tra nhập trực tiếp nội dung quan sát hoặc vấn đề phát hiện tại hiện trường.
+
+Ví dụ:
+
+Khu vực sơ chế chưa đảm bảo vệ sinh.
+Nhiệt độ kho lạnh chưa đạt yêu cầu.
+Dụng cụ chế biến chưa được vệ sinh đúng quy trình.
+Nhân viên chưa sử dụng đầy đủ bảo hộ lao động.
+Nguyên liệu chưa có đầy đủ thông tin truy xuất.
+Thực phẩm có dấu hiệu bảo quản không đúng điều kiện.
+
+Trường này cho phép người kiểm tra mô tả tự do theo tình huống thực tế.
+
+2. Kết quả đánh giá
+
+Người kiểm tra lựa chọn một trong các trạng thái:
+
+Đạt.
+Không đạt.
+Chưa đánh giá.
+
+Việc sử dụng ba trạng thái giúp hệ thống phân biệt rõ:
+
+Trạng thái	Ý nghĩa
+Đạt	Nội dung kiểm tra đáp ứng yêu cầu
+Không đạt	Phát hiện tồn tại hoặc vi phạm
+Chưa đánh giá	Chưa đủ thông tin hoặc chưa thể kết luận tại thời điểm kiểm tra
+3. Ảnh minh chứng
+
+Mỗi ghi nhận có thể đính kèm ảnh minh chứng riêng.
+
+Người kiểm tra có thể:
+
+Chụp ảnh trực tiếp từ ứng dụng.
+Upload ảnh có sẵn từ thiết bị.
+
+Một ghi nhận có thể đính kèm một hoặc nhiều hình ảnh tùy theo nhu cầu thực tế.
+
+Ảnh được lưu và liên kết trực tiếp với nội dung ghi nhận tương ứng, giúp thuận tiện cho việc xem lại hồ sơ sau này.
+
+4. Ghi chú
+
+Người kiểm tra có thể nhập thêm ghi chú bổ sung cho từng ghi nhận.
+
+Ví dụ:
+
+Đã yêu cầu nhà trường xử lý ngay tại hiện trường.
+Nhà trường giải trình đang chờ thay thế thiết bị.
+Cần kiểm tra lại trong lần tiếp theo.
+5.2.3. Liên kết thông tin liên quan – Không bắt buộc
+
+Đây là chức năng quan trọng để đảm bảo khả năng truy xuất dữ liệu mà vẫn giữ giao diện biên bản đơn giản.
+
+Mỗi ghi nhận có một tùy chọn:
+
++ Liên kết thông tin liên quan
+
+Việc liên kết là không bắt buộc.
+
+Nếu ghi nhận chỉ liên quan đến điều kiện vệ sinh hoặc cơ sở vật chất, người kiểm tra có thể lưu trực tiếp mà không cần chọn bất kỳ dữ liệu nào khác.
+
+Nếu ghi nhận liên quan đến thực phẩm hoặc chuỗi cung ứng, người kiểm tra có thể liên kết với dữ liệu có sẵn trên hệ thống.
+
+Các nhóm dữ liệu có thể liên kết bao gồm:
+
+Khu vực.
+Bữa ăn.
+Món ăn.
+Nguyên liệu.
+Lô thực phẩm.
+Nhà cung cấp.
+Ví dụ 1: Kiểm tra khu vực bếp
+
+Người kiểm tra phát hiện:
+
+"Khu vực chế biến có dấu hiệu mất vệ sinh."
+
+Thông tin ghi nhận:
+
+Nội dung:
+Khu vực chế biến có dấu hiệu mất vệ sinh.
+
+Kết quả:
+Không đạt.
+
+Ảnh minh chứng:
+03 hình ảnh.
+
+Liên kết:
+Khu vực bếp.
+
+Trường hợp này không cần liên kết với món ăn hoặc nguyên liệu.
+
+Ví dụ 2: Kiểm tra nguyên liệu
+
+Người kiểm tra phát hiện:
+
+"Nguyên liệu thịt gà chưa được bảo quản đúng điều kiện."
+
+Thông tin liên kết có thể bao gồm:
+
+Nguyên liệu: Thịt gà
+Lô thực phẩm: LOT-001
+Nhà cung cấp: Công ty ABC
+
+Thông qua liên kết này, hệ thống có thể biết chính xác vấn đề được phát hiện đang liên quan đến nguyên liệu và lô thực phẩm nào.
+
+Ví dụ 3: Kiểm tra món ăn
+
+Người kiểm tra phát hiện vấn đề liên quan đến món ăn cụ thể:
+
+"Món gà kho có dấu hiệu bất thường."
+
+Người kiểm tra có thể liên kết:
+
+Bữa ăn: Bữa trưa ngày 05/09/2026
+Món ăn: Gà kho
+
+Từ món ăn, hệ thống có thể tiếp tục truy xuất ngược:
+
+Món ăn
+   ↓
+Nguyên liệu sử dụng
+   ↓
+Lô thực phẩm
+   ↓
+Nhà cung cấp
+5.2.4. Nguyên tắc thiết kế dữ liệu
+
+Điểm quan trọng của giải pháp là:
+
+Biên bản kiểm tra không phải là nguồn dữ liệu duy nhất phục vụ truy xuất nguồn gốc.
+
+Dữ liệu truy xuất được hình thành từ dữ liệu vận hành hàng ngày của nhà trường.
+
+Ví dụ:
+
+BỮA ĂN
+   │
+   ├── Món ăn A
+   │      │
+   │      ├── Nguyên liệu 1
+   │      │      └── Lô thực phẩm
+   │      │             └── Nhà cung cấp
+   │      │
+   │      └── Nguyên liệu 2
+   │
+   └── Món ăn B
+
+Biên bản kiểm tra đóng vai trò bổ sung:
+
+Ghi nhận vấn đề + liên kết đến đối tượng liên quan.
+
+Do đó, ngay cả khi người kiểm tra không kiểm tra món ăn hoặc nguyên liệu mà chỉ kiểm tra khu vực bếp, hệ thống vẫn hoạt động bình thường.
+
+5.2.5. Kết luận & Kiến nghị khắc phục
+
+Sau khi hoàn tất các ghi nhận tại hiện trường, người kiểm tra thực hiện nhập thông tin kết luận chung.
+
+Thông tin bao gồm:
+
+Kết luận kiểm tra
+
+Nhập nhận định tổng quan về kết quả kiểm tra.
+
+Ví dụ:
+
+Nhà trường cơ bản đáp ứng các yêu cầu về ATTP, tuy nhiên vẫn còn một số tồn tại liên quan đến điều kiện vệ sinh khu vực chế biến và bảo quản nguyên liệu.
+
+Hạn khắc phục
+
+Cho phép thiết lập thời hạn yêu cầu đơn vị hoàn thành việc khắc phục.
+
+Trường này có thể để trống nếu không phát sinh yêu cầu khắc phục.
+
+Kiến nghị/Yêu cầu khắc phục
+
+Người kiểm tra nhập các yêu cầu đối với nhà trường.
+
+Ví dụ:
+
+Vệ sinh và khử khuẩn khu vực chế biến.
+Kiểm tra lại điều kiện bảo quản nguyên liệu.
+Bổ sung hồ sơ truy xuất nguồn gốc thực phẩm.
+Báo cáo kết quả khắc phục trước thời hạn quy định.
+Dấu hiệu sự cố thực phẩm
+
+Biên bản có checkbox:
+
+☐ Có dấu hiệu sự cố thực phẩm – Chuyển sang SOP Alert
+
+Khi được kích hoạt, hệ thống ghi nhận sự việc có dấu hiệu bất thường và chuyển sang quy trình ứng phó sự cố ATTP.
+
+Chữ ký xác nhận
+
+Biên bản hỗ trợ ký điện tử hoặc ký trực tiếp trên thiết bị đối với:
+
+Người kiểm tra.
+Đại diện đơn vị được kiểm tra.
+Các thành phần liên quan nếu cần.
+5.3. Theo dõi kiến nghị & Xử lý vi phạm
+Mục tiêu
+
+Theo dõi toàn bộ quá trình khắc phục các tồn tại được phát hiện trong quá trình kiểm tra.
+
+Mỗi kiến nghị hoặc yêu cầu khắc phục được liên kết với biên bản kiểm tra ban đầu.
+
+Quy trình
+Phát hiện vấn đề
+       ↓
+Lập biên bản kiểm tra
+       ↓
+Đưa ra kiến nghị khắc phục
+       ↓
+Thiết lập thời hạn
+       ↓
+Nhà trường thực hiện khắc phục
+       ↓
+Cập nhật kết quả
+       ↓
+UBND Xã/Phường xác minh
+       │
+       ├── Đạt → Hoàn tất
+       │
+       └── Chưa đạt → Nhắc nhở / Xử lý tiếp
+Trạng thái theo dõi
+
+Hệ thống quản lý trạng thái:
+
+Chưa khắc phục.
+Đang khắc phục.
+Đã khắc phục.
+Quá hạn.
+Không đạt sau xác minh.
+Đã hoàn tất.
+
+Cán bộ quản lý có thể nhanh chóng xác định các trường:
+
+Chưa thực hiện khắc phục.
+Sắp đến hạn.
+Đã quá hạn.
+Có dấu hiệu tái phạm.
+5.4. Quy trình ứng phó Sự cố Ngộ độc Thực phẩm – SOP Alert
+Mục tiêu
+
+Khi xuất hiện ca nghi ngờ ngộ độc thực phẩm hoặc dấu hiệu sự cố ATTP, hệ thống hỗ trợ kích hoạt quy trình cảnh báo và truy xuất nhanh dữ liệu liên quan.
+
+Các nguồn kích hoạt SOP Alert
+
+SOP Alert có thể được kích hoạt từ:
+
+Nguồn 1: Y tế học đường
+
+Khi y tế học đường ghi nhận ca nghi ngờ ngộ độc thực phẩm.
+
+Nguồn 2: Biên bản kiểm tra
+
+Khi đoàn kiểm tra phát hiện dấu hiệu bất thường và đánh dấu:
+
+Có dấu hiệu sự cố thực phẩm.
+
+Khi kích hoạt cảnh báo
+
+Hệ thống gửi thông báo đến các đơn vị/cán bộ liên quan:
+
+Trạm Y tế.
+Lãnh đạo UBND Xã/Phường.
+Cán bộ phụ trách ATTP.
+Các đơn vị được phân công xử lý sự cố.
+5.4.1. Khoanh vùng & Truy vết
+
+Khi xảy ra sự cố, cán bộ không cần tìm kiếm thủ công trong biên bản kiểm tra.
+
+Hệ thống sử dụng dữ liệu vận hành để truy xuất theo chuỗi:
+
+SỰ CỐ
+   ↓
+Xác định trường + thời gian
+   ↓
+Xác định bữa ăn liên quan
+   ↓
+Danh sách món ăn
+   ↓
+Nguyên liệu sử dụng
+   ↓
+Lô thực phẩm
+   ↓
+Nhà cung cấp
+
+Ngoài ra, hệ thống hiển thị các thông tin liên quan khác:
+
+Biên bản kiểm tra gần nhất.
+Các lỗi hoặc vi phạm đang tồn tại.
+Các ghi nhận hiện trường liên quan.
+Các hình ảnh minh chứng.
+Lịch sử nhà cung cấp.
+Các trường khác sử dụng cùng nhà cung cấp hoặc cùng lô thực phẩm nếu dữ liệu cho phép.
+
+Điều này hỗ trợ cơ quan chức năng nhanh chóng:
+
+Khoanh vùng thực phẩm nghi ngờ.
+Niêm phong thực phẩm.
+Xác định lô hàng.
+Xác định đơn vị cung cấp.
+Phục vụ lấy mẫu.
+Phục vụ điều tra nguyên nhân.
+6. BÁO CÁO & KẾT NỐI CẤP TRÊN
+
+Hệ thống tự động tổng hợp dữ liệu quản lý ATTP trên địa bàn từ các hoạt động:
+
+Kiểm tra.
+Ghi nhận vi phạm.
+Kiến nghị khắc phục.
+Xử lý vi phạm.
+SOP Alert.
+Tình trạng thực hiện của các trường.
+
+Các báo cáo có thể được tổng hợp theo:
+
+Tuần.
+Tháng.
+Quý.
+Năm.
+Báo cáo đột xuất.
+
+Báo cáo phục vụ gửi đến:
+
+Trung tâm Y tế.
+Phòng Y tế Quận/Huyện.
+Chi cục An toàn Thực phẩm.
+Các cơ quan quản lý cấp trên theo phân quyền.
+
+Quy trình:
+
+DỮ LIỆU TỪ CÁC TRƯỜNG
+        +
+DỮ LIỆU KIỂM TRA UBND XÃ/PHƯỜNG
+        ↓
+HỆ THỐNG TỰ ĐỘNG TỔNG HỢP
+        ↓
+BÁO CÁO ATTP
+        ↓
+CÁN BỘ RÀ SOÁT / XÁC NHẬN
+        ↓
+GỬI / ĐỒNG BỘ CẤP TRÊN
+7. TRUYỀN THÔNG & ĐÁNH GIÁ PHÂN LOẠI
+
+Hệ thống tổng hợp dữ liệu hoạt động ATTP của các trường để hỗ trợ đánh giá mức độ tuân thủ và phục vụ công tác thi đua, truyền thông.
+
+Các yếu tố đánh giá có thể bao gồm:
+
+Kết quả kiểm tra.
+Số lượng vi phạm.
+Mức độ vi phạm.
+Tỷ lệ hoàn thành kiến nghị khắc phục.
+Thời gian khắc phục.
+Số lần tái phạm.
+Số lần xảy ra cảnh báo hoặc sự cố ATTP.
+
+Kết quả có thể hiển thị dưới dạng:
+
+Điểm đánh giá.
+Xếp hạng.
+Nhóm phân loại.
+
+Ví dụ:
+
+A – Xuất sắc
+B – Tốt
+C – Đạt yêu cầu
+D – Cần cải thiện
+E – Cần theo dõi đặc biệt
+Tóm tắt kiến trúc nghiệp vụ mình đề xuất
+QUẢN LÝ ATTP CẤP XÃ / PHƯỜNG
+│
+├── 1. Kế hoạch & Lịch sử kiểm tra
+│
+├── 2. Biên bản kiểm tra điện tử
+│   │
+│   ├── Thông tin chung
+│   │
+│   ├── Ghi nhận tại hiện trường
+│   │   ├── Nội dung tự do
+│   │   ├── Đánh giá
+│   │   ├── Ảnh minh chứng
+│   │   ├── Ghi chú
+│   │   └── Liên kết dữ liệu (Không bắt buộc)
+│   │
+│   └── Kết luận & Kiến nghị
+│
+├── 3. Theo dõi kiến nghị & Xử lý vi phạm
+│
+├── 4. SOP Alert – Ứng phó sự cố ATTP
+│   │
+│   ├── Cảnh báo khẩn
+│   ├── Khoanh vùng
+│   └── Truy xuất nguồn gốc
+│       └── Bữa ăn → Món ăn → Nguyên liệu
+│           → Lô thực phẩm → Nhà cung cấp
+│
+├── 5. Báo cáo & Kết nối cấp trên
+│
+└── 6. Truyền thông & Đánh giá phân loại
